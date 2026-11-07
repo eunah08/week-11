@@ -13,6 +13,15 @@
 - [`docs/미니리액트_Phase2.md`](docs/미니리액트_Phase2.md) : Phase 2
 - [`docs/implementation_notes.md`](docs/implementation_notes.md) : 구현 안내
 
+## AI 진입 파일
+
+AI별 진입 파일은 `ai/` 폴더에 있습니다. 루트에 없어서 자동으로 읽히지 않으므로,
+작업을 시작할 때 AI에게 먼저 읽게 합니다.
+
+- Claude : `ai/CLAUDE.md 를 읽고 시작해`
+- Gemini : `ai/GEMINI.md 를 읽고 시작해`
+- GPT(Codex 등) : `ai/AGENTS.md 를 읽고 시작해`
+
 ## 실행
 
 ES Modules를 쓰므로 `file://`로 열면 동작하지 않습니다. 저장소 루트에서 로컬 정적 서버를 띄웁니다.
