@@ -1,25 +1,28 @@
 # 미니 리액트 (week-11)
 
-Vanilla JS로 만든 미니 리액트입니다. 외부 프레임워크를 사용하지 않습니다.
+외부 프레임워크 없이 JavaScript로 직접 만드는 미니 리액트입니다.
 
-## 구성
+- Phase 1 : Virtual DOM 변환, Diff, Patch, 상태 이력
+- Phase 2 : 함수형 컴포넌트, State, Hooks (`useState`, `useEffect`, `useMemo`)
 
-Phase 1: Virtual DOM 변환, Diff, Patch, State History
+## 협약 문서
 
-Phase 2: FunctionComponent, useState, useEffect, useMemo
+코드보다 협약 문서가 우선합니다. 작업 전에 꼭 읽어 주세요.
+
+- [`docs/미니리액트_Phase1.md`](docs/미니리액트_Phase1.md) : 공통 규칙 + Phase 1
+- [`docs/미니리액트_Phase2.md`](docs/미니리액트_Phase2.md) : Phase 2
+- [`docs/implementation_notes.md`](docs/implementation_notes.md) : 구현 안내
 
 ## 실행
 
-index.html을 브라우저에서 열면 됩니다.
+ES Modules를 쓰므로 `file://`로 열면 동작하지 않습니다. 저장소 루트에서 로컬 정적 서버를 띄웁니다.
 
-## week-11 파일 구조
+```bash
+npx serve .
+# 또는
+python3 -m http.server 8000
+```
 
-| 경로 | 역할 |
-|---|---|
-| `index.html` | 화면 뼈대. 실제 영역, 테스트 영역, 뒤로가기·앞으로가기·Patch 버튼이 있다. |
-| `css/style.css` | 화면 레이아웃과 버튼, 영역 스타일을 정의한다. |
-| `src/main.js` | 진입점. 실제 영역과 테스트 영역을 연결한다. (지금은 placeholder) |
-| `src/vdom/.gitkeep` | Phase 1 자리. Virtual DOM 변환, Diff, Patch 코드를 둔다. |
-| `src/component/.gitkeep` | Phase 2 자리. FunctionComponent, useState, useEffect, useMemo 코드를 둔다. |
-| `tests/.gitkeep` | 단위 테스트 자리. |
-| `README.md` | 프로젝트 소개, 구성, 실행 방법을 적는다. |
+## 파일 구조
+
+Phase 1 문서 4장의 트리를 따릅니다.

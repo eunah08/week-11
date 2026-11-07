@@ -1,0 +1,11 @@
+export { NODE_TYPES } from './vdom/nodeTypes.js';
+export { domToVNode } from './vdom/domToVNode.js';
+export { render } from './vdom/render.js';
+export { PATCH_TYPES } from './diff/patchTypes.js';
+export { diff } from './diff/diff.js';
+export { applyPatches } from './patch/applyPatches.js';
+export { createElement } from './component/createElement.js';
+export { FunctionComponent } from './component/FunctionComponent.js';
+export { useState } from './hooks/useState.js';
+export { useEffect } from './hooks/useEffect.js';
+export { useMemo } from './hooks/useMemo.js';

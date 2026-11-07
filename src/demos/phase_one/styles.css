@@ -1,0 +1,13 @@
+.phase-one .history-controls {
+  margin-bottom: 16px;
+}
+
+.phase-one .area-panel {
+  margin-bottom: 24px;
+}
+
+.phase-one #test-area {
+  min-height: 120px;
+  padding: 8px;
+  border: 1px dashed #888;
+}

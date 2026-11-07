@@ -1,24 +1,33 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>미니 리액트</title>
-<link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-<div class="controls">
-<button id="back">← 뒤로가기</button>
-<button id="forward">앞으로가기 →</button>
-<button id="patch">Patch</button>
-</div>
-<section>
-<h2>실제 영역</h2>
-<div id="real-root"></div>
-</section>
-<section>
-<h2>테스트 영역</h2>
-<div id="test-root" contenteditable="true"></div>
-</section>
-<script type="module" src="src/main.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미니 리액트</title>
+    <link rel="stylesheet" href="src/styles/base.css">
+    <link rel="stylesheet" href="src/demos/phase_one/styles.css">
+  </head>
+  <body>
+    <main class="phase-one">
+      <div class="history-controls">
+        <button type="button" id="back-button" data-action="back">← 뒤로가기</button>
+        <button type="button" id="forward-button" data-action="forward">앞으로가기 →</button>
+        <button type="button" id="patch-button" data-action="patch">Patch</button>
+        <span id="history-position"></span>
+      </div>
+      <p id="error-message" role="alert"></p>
+
+      <section class="area-panel">
+        <h2>실제 영역</h2>
+        <div id="real-area"></div>
+      </section>
+
+      <section class="area-panel">
+        <h2>테스트 영역</h2>
+        <p class="edit-guide">지원하는 편집 범위 안내 (TODO)</p>
+        <div id="test-area" contenteditable="true"></div>
+      </section>
+    </main>
+    <script type="module" src="src/main.js"></script>
+  </body>
 </html>
