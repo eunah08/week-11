@@ -3,3 +3,4 @@ export { NODE_TYPES } from './nodeTypes.js';
 export { domToVNode } from './domToVNode.js';
 export { render } from './render.js';
 export { setProp, removeProp } from './props.js';
+export { isIgnoredNode } from './isIgnoredNode.js';
