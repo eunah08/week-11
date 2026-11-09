@@ -1,4 +1,4 @@
-import { NODE_TYPES } from '../../core/index.js';
+import { isVNode } from '../../core/index.js';
 
 /**
  * Patch할 때마다 저장하는 VNode 기록. (Phase 1 문서 9.2)
@@ -11,7 +11,7 @@ export class StateHistory {
    */
   constructor(initialVNode) { // 첫 기록을 저장한다
     if (!isVNode(initialVNode)) {
-      throw new TypeError('[StateHistory] VNode가 필요합니다');
+      throw new TypeError('[StateHistory] VNode가 필요합니다'); // 경고문
     }
 
     // 저장한 VNode 목록과, 지금 보고 있는 기록의 위치
@@ -27,7 +27,7 @@ export class StateHistory {
    */
   push(vnode) { // 새 기록을 붙인다 (현재 위치 뒤의 기록은 버린다)
     if (!isVNode(vnode)) {
-      throw new TypeError('[StateHistory] VNode가 필요합니다');
+      throw new TypeError('[StateHistory] VNode가 필요합니다'); // 경고문
     }
 
     // 뒤로가기한 상태에서 새 기록을 넣으면, 현재 위치 뒤의 기록(앞으로가기 기록)은 버린다
@@ -87,15 +87,4 @@ export class StateHistory {
     };
     return position;
   }
-}
-
-function isVNode(value) { // 값이 VNode인지 확인한다
-  const isObjectValue = typeof value === 'object' && value !== null;
-  if (!isObjectValue) {
-    return false;
-  }
-
-  const isElement = value.type === NODE_TYPES.ELEMENT;
-  const isText = value.type === NODE_TYPES.TEXT;
-  return isElement || isText;
 }

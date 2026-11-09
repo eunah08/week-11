@@ -1,6 +1,7 @@
 export { NODE_TYPES } from './vdom/nodeTypes.js';
 export { domToVNode } from './vdom/domToVNode.js';
 export { render } from './vdom/render.js';
+export { isVNode } from './vdom/isVNode.js';
 export { PATCH_TYPES } from './diff/patchTypes.js';
 export { diff } from './diff/diff.js';
 export { applyPatches } from './patch/applyPatches.js';

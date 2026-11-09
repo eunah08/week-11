@@ -17,7 +17,7 @@ export function startPhaseOne() { // Phase 1 데모를 시작한다
   //    영역(컨테이너)과 비교 대상 루트를 구분한다. 루트는 영역 안의 첫 번째 요소다
   demo.realRootNode = demo.realArea.firstElementChild;
   if (demo.realRootNode === null) {
-    throw new Error('[startPhaseOne] 실제 영역에 비교할 요소가 없습니다');
+    throw new Error('[startPhaseOne] 실제 영역에 비교할 요소가 없습니다'); // 경고문
   }
   const initialVNode = domToVNode(demo.realRootNode);
 
@@ -49,11 +49,11 @@ function createDemo() { // 화면 요소와 상태를 한 객체로 모은다
 }
 
 function getElement(selector) { // 선택자로 요소를 찾는다 (없으면 에러)
-  const element = document.querySelector(selector);
-  if (element === null) {
-    throw new Error(`[getElement] ${selector} 요소가 없습니다`);
+  const domNode = document.querySelector(selector);
+  if (domNode === null) {
+    throw new Error(`[getElement] ${selector} 요소가 없습니다`); // 경고문
   }
-  return element;
+  return domNode;
 }
 
 function connectButtons(demo) { // 세 버튼에 클릭 이벤트를 연결한다
@@ -102,7 +102,7 @@ function patchRealArea(demo) { // 테스트 영역의 변경을 실제 영역에
   // 1) 테스트 영역의 현재 DOM을 다시 읽는다
   const testRootNode = demo.testArea.firstElementChild;
   if (testRootNode === null) {
-    throw new Error('[patchRealArea] 테스트 영역에 비교할 요소가 없습니다');
+    throw new Error('[patchRealArea] 테스트 영역에 비교할 요소가 없습니다'); // 경고문
   }
   const nextVNode = domToVNode(testRootNode);
 
@@ -158,7 +158,7 @@ function clearErrorMessage(demo) { // 에러 문구를 지운다
 
 function showErrorMessage(demo, error) { // 에러를 콘솔과 화면에 보여준다
   console.error(error);
-  demo.errorMessage.textContent = error.message;
+  demo.errorMessage.textContent = error.message; // 경고문
 }
 
 function updateHistoryControls(demo) { // 이동 버튼 활성 상태와 이력 위치 문구를 갱신한다

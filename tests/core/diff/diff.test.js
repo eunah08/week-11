@@ -172,3 +172,18 @@ test('VNode가 아니면 TypeError를 던진다', () => {
   assert.throws(() => diff(null, text('a')), expectedError);
   assert.throws(() => diff(text('a'), { type: 'comment' }), expectedError);
 });
+
+test('type만 맞고 필요한 값이 없는 VNode도 TypeError를 던진다', () => {
+  const expectedError = {
+    name: 'TypeError',
+    message: '[diff] VNode가 필요합니다',
+  };
+  const withoutProps = { type: 'element', tag: 'div' };
+  const withoutText = { type: 'text' };
+  const withBrokenChild = element('div', {}, [{ type: 'text' }]);
+
+  assert.throws(() => diff(withoutProps, withoutProps), expectedError);
+  assert.throws(() => diff(withoutText, withoutText), expectedError);
+  assert.throws(() => diff(text('a'), { type: 'element' }), expectedError);
+  assert.throws(() => diff(withBrokenChild, element('div', {}, [])), expectedError);
+});

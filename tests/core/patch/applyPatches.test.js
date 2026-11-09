@@ -239,3 +239,28 @@ test('알 수 없는 Patch 타입이나 잘못된 인자는 TypeError를 던진�
   assert.throws(() => applyPatches(null, []), TypeError);
   assert.throws(() => applyPatches(rootNode, null), TypeError);
 });
+
+test('Patch의 형태가 올바르지 않으면 하나도 적용하지 않고 TypeError를 던진다', () => {
+  const rootNode = createRootNode('<ul><li>1</li><li>2</li></ul>');
+  const htmlBefore = rootNode.outerHTML;
+  const validPatch = { type: PATCH_TYPES.REMOVE, path: [0] };
+  const brokenPatches = [
+    null,
+    { type: PATCH_TYPES.REMOVE },
+    { type: PATCH_TYPES.INSERT, path: [], index: 0 },
+    { type: PATCH_TYPES.REPLACE, path: [], node: { type: 'element' } },
+    { type: PATCH_TYPES.UPDATE_TEXT, path: [0] },
+    { type: PATCH_TYPES.UPDATE_PROPS, path: [] },
+  ];
+  const expectedError = {
+    name: 'TypeError',
+    message: '[applyPatches] Patch 형태가 올바르지 않습니다',
+  };
+
+  for (const brokenPatch of brokenPatches) {
+    assert.throws(() => applyPatches(rootNode, [validPatch, brokenPatch]), expectedError);
+  }
+
+  // 올바른 Patch가 앞에 있어도, 하나라도 틀리면 DOM은 그대로여야 한다
+  assert.equal(rootNode.outerHTML, htmlBefore);
+});

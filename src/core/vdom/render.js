@@ -15,27 +15,27 @@ export function render(vnode) { // VNode로 새 DOM 노드를 만든다 (documen
   } else if (isObjectValue && vnode.type === NODE_TYPES.ELEMENT) {
     return renderElement(vnode);
   } else {
-    throw new TypeError('[render] 알 수 없는 VNode 타입입니다');
+    throw new TypeError('[render] 알 수 없는 VNode 타입입니다'); // 경고문
   }
 }
 
 function renderText(vnode) { // 텍스트 VNode로 텍스트 노드를 만든다
-  const textNode = document.createTextNode(vnode.text);
-  return textNode;
+  const domNode = document.createTextNode(vnode.text);
+  return domNode;
 }
 
 function renderElement(vnode) { // 요소를 만들고 속성과 자식을 채운다
-  const element = document.createElement(vnode.tag);
+  const domNode = document.createElement(vnode.tag);
 
   for (const key of Object.keys(vnode.props)) {
     const value = vnode.props[key];
-    setProp(element, key, value);
+    setProp(domNode, key, value);
   }
 
   for (const child of vnode.children) {
-    const childNode = render(child);
-    element.appendChild(childNode);
+    const childDomNode = render(child);
+    domNode.appendChild(childDomNode);
   }
 
-  return element;
+  return domNode;
 }

@@ -1,5 +1,6 @@
 // vdom 폴더에는 index.js가 없고, core/index.js를 거치면 순환 import가 되므로 파일을 직접 불러온다
 import { NODE_TYPES } from '../vdom/nodeTypes.js';
+import { isVNode } from '../vdom/isVNode.js';
 import { PATCH_TYPES } from './patchTypes.js';
 
 /**
@@ -13,24 +14,13 @@ export function diff(previousVNode, nextVNode) { // 두 VNode를 비교해 변�
   const isPreviousVNode = isVNode(previousVNode);
   const isNextVNode = isVNode(nextVNode);
   if (!isPreviousVNode || !isNextVNode) {
-    throw new TypeError('[diff] VNode가 필요합니다');
+    throw new TypeError('[diff] VNode가 필요합니다'); // 경고문
   }
 
   // 루트 자신의 경로는 빈 배열이다
   const rootPath = [];
   const patches = diffNode(previousVNode, nextVNode, rootPath);
   return patches;
-}
-
-function isVNode(value) { // 값이 요소나 텍스트 VNode인지 확인한다
-  const isObjectValue = typeof value === 'object' && value !== null;
-  if (!isObjectValue) {
-    return false;
-  }
-
-  const isElement = value.type === NODE_TYPES.ELEMENT;
-  const isText = value.type === NODE_TYPES.TEXT;
-  return isElement || isText;
 }
 
 function diffNode(previousVNode, nextVNode, path) { // 노드 하나와 그 아래를 비교해 Patch 목록을 만든다

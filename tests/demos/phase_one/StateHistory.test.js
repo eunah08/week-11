@@ -58,4 +58,6 @@ test('VNode가 아니면 TypeError를 던진다', () => {
 
   assert.throws(() => new StateHistory(null), expectedError);
   assert.throws(() => history.push({ type: 'comment' }), expectedError);
+  assert.throws(() => new StateHistory({ type: 'element' }), expectedError);
+  assert.throws(() => history.push({ type: 'text' }), expectedError);
 });
