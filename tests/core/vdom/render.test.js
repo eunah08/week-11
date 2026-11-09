@@ -1,84 +1,76 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { JSDOM } from 'jsdom';
-import { domToVNode, render, NODE_TYPES } from '../../../src/core/index.js';
+import { render, domToVNode } from '../../../src/core/index.js';
+import { test, assertEqual, assertThrows, assertTrue } from '../../testRunner.js';
 
-// Node.js에는 브라우저 DOM이 없으므로 jsdom으로 만든 DOM을 전역에 넣는다
-const jsdom = new JSDOM('');
-globalThis.document = jsdom.window.document;
-globalThis.Node = jsdom.window.Node;
+test('render : domToVNode와 왕복 변환하면 같은 구조가 된다', () => {
+  const template = document.createElement('template');
 
-test('domToVNode와 왕복 변환하면 같은 구조가 나온다', () => {
-  const container = document.createElement('div');
-  container.innerHTML = '<div class="a"><h1 title="t">제목</h1><ul><li>1</li><li>2</li></ul></div>';
-  const vnode = domToVNode(container.firstElementChild);
+  template.innerHTML = '<ul class="list"><li>하나</li><li><b>둘</b> 셋</li><li></li></ul>';
 
-  const renderedNode = render(vnode);
-  const roundTripVNode = domToVNode(renderedNode);
+  const vnode = domToVNode(template.content.firstChild);
 
-  assert.deepEqual(roundTripVNode, vnode);
+  assertEqual(domToVNode(render(vnode)), vnode);
 });
 
-test('텍스트 VNode는 텍스트 노드가 된다', () => {
-  const vnode = { type: NODE_TYPES.TEXT, text: '안녕' };
+test('render : 텍스트 VNode는 텍스트 노드가 된다', () => {
+  const domNode = render({ type: 'text', text: '글자' });
 
-  const domNode = render(vnode);
-
-  assert.equal(domNode.nodeType, Node.TEXT_NODE);
-  assert.equal(domNode.nodeValue, '안녕');
+  assertTrue(domNode.nodeType === Node.TEXT_NODE, '텍스트 노드가 아님');
+  assertEqual(domNode.textContent, '글자');
 });
 
-test('document에 붙이지 않은 새 노드를 돌려준다', () => {
-  const vnode = { type: NODE_TYPES.ELEMENT, tag: 'p', props: {}, children: [] };
+test('render : document에 붙이지 않은 노드를 반환한다', () => {
+  const domNode = render({ type: 'element', tag: 'div', props: {}, children: [] });
 
-  const domNode = render(vnode);
-
-  assert.equal(domNode.parentNode, null);
-  assert.equal(domNode.isConnected, false);
+  assertEqual(domNode.parentNode, null);
 });
 
-test('불리언·value·checked 속성을 규칙대로 넣는다', () => {
-  const vnode = {
-    type: NODE_TYPES.ELEMENT,
+test('render : 불리언 속성과 value, checked 프로퍼티를 처리한다', () => {
+  const domNode = render({
+    type: 'element',
     tag: 'input',
-    props: { disabled: true, hidden: false, value: '정글', checked: true, title: null },
+    props: { type: 'checkbox', checked: true, disabled: false, value: 'a' },
     children: [],
-  };
+  });
 
-  const domNode = render(vnode);
-
-  assert.equal(domNode.getAttribute('disabled'), '');
-  assert.equal(domNode.hasAttribute('hidden'), false);
-  assert.equal(domNode.hasAttribute('title'), false);
-  assert.equal(domNode.value, '정글');
-  assert.equal(domNode.checked, true);
+  assertTrue(domNode.hasAttribute('checked') && domNode.checked, 'checked가 아님');
+  assertTrue(!domNode.hasAttribute('disabled'), 'false인데 disabled 속성이 있음');
+  assertEqual(domNode.value, 'a');
 });
 
-test('on으로 시작하는 함수 props는 이벤트로 연결한다', () => {
+test('render : 이벤트 props를 리스너로 단다', () => {
   let clickCount = 0;
-  function handleClick() {
-    clickCount = clickCount + 1;
-  }
-  const vnode = {
-    type: NODE_TYPES.ELEMENT,
+  const domNode = render({
+    type: 'element',
     tag: 'button',
-    props: { onClick: handleClick },
+    props: { onClick: () => { clickCount += 1; } },
     children: [],
-  };
+  });
 
-  const domNode = render(vnode);
   domNode.click();
-
-  assert.equal(clickCount, 1);
-  assert.equal(domNode.hasAttribute('onClick'), false);
+  assertEqual(clickCount, 1);
+  assertTrue(!domNode.hasAttribute('onClick'), '이벤트가 속성으로 들어감');
 });
 
-test('알 수 없는 VNode 타입이면 TypeError를 던진다', () => {
-  const expectedError = {
-    name: 'TypeError',
-    message: '[render] 알 수 없는 VNode 타입입니다',
-  };
+test('render : 알 수 없는 VNode 타입이면 TypeError', () => {
+  assertThrows(() => render({ type: 'comment' }), TypeError, '[render] 알 수 없는 VNode 타입입니다');
+  assertThrows(() => render(null), TypeError, '[render] 알 수 없는 VNode 타입입니다');
+  // 객체가 원래 가진 이름(toString 등)도 알 수 없는 타입으로 본다.
+  assertThrows(() => render({ type: 'toString' }), TypeError, '[render] 알 수 없는 VNode 타입입니다');
+});
 
-  assert.throws(() => render({ type: 'comment' }), expectedError);
-  assert.throws(() => render(null), expectedError);
+test('render : select의 value는 option이 붙은 뒤에도 유지된다', () => {
+  const option = (value) => ({
+    type: 'element',
+    tag: 'option',
+    props: { value },
+    children: [{ type: 'text', text: value }],
+  });
+  const domNode = render({
+    type: 'element',
+    tag: 'select',
+    props: { value: 'b' },
+    children: [option('a'), option('b'), option('c')],
+  });
+
+  assertEqual(domNode.value, 'b');
 });

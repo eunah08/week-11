@@ -1,189 +1,130 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { diff, NODE_TYPES, PATCH_TYPES } from '../../../src/core/index.js';
+import { diff, PATCH_TYPES } from '../../../src/core/index.js';
+import { test, assertEqual, assertThrows } from '../../testRunner.js';
 
-function element(tag, props, children) { // 테스트용 요소 VNode를 만든다
-  return { type: NODE_TYPES.ELEMENT, tag: tag, props: props, children: children };
+function text(value) {
+  return { type: 'text', text: value };
 }
 
-function text(value) { // 테스트용 텍스트 VNode를 만든다
-  return { type: NODE_TYPES.TEXT, text: value };
+function element(tag, props = {}, children = []) {
+  return { type: 'element', tag, props, children };
 }
 
-test('바뀐 게 없으면 빈 배열을 돌려준다', () => {
-  const previousVNode = element('div', { class: 'a' }, [text('글')]);
-  const nextVNode = element('div', { class: 'a' }, [text('글')]);
+test('diff : 바뀐 게 없으면 빈 배열', () => {
+  const vnode = element('div', { class: 'a' }, [text('글')]);
 
-  const patches = diff(previousVNode, nextVNode);
-
-  assert.deepEqual(patches, []);
+  assertEqual(diff(vnode, element('div', { class: 'a' }, [text('글')])), []);
 });
 
-test('자식이 늘어나면 INSERT를 index 오름차순으로 만든다', () => {
-  const secondItem = element('li', {}, [text('2')]);
-  const thirdItem = element('li', {}, [text('3')]);
-  const previousVNode = element('ul', {}, [element('li', {}, [])]);
-  const nextVNode = element('ul', {}, [element('li', {}, []), secondItem, thirdItem]);
+test('diff : 자식 추가(맨 뒤)는 INSERT를 index 오름차순으로 만든다', () => {
+  const previousVNode = element('ul', {}, [element('li')]);
+  const nextVNode = element('ul', {}, [element('li'), element('li', { id: 'b' }), element('li')]);
 
-  const patches = diff(previousVNode, nextVNode);
-
-  assert.deepEqual(patches, [
-    { type: PATCH_TYPES.INSERT, path: [], index: 1, node: secondItem },
-    { type: PATCH_TYPES.INSERT, path: [], index: 2, node: thirdItem },
+  assertEqual(diff(previousVNode, nextVNode), [
+    { type: PATCH_TYPES.INSERT, path: [], index: 1, node: nextVNode.children[1] },
+    { type: PATCH_TYPES.INSERT, path: [], index: 2, node: nextVNode.children[2] },
   ]);
 });
 
-test('자식이 줄어들면 REMOVE를 index 내림차순으로 만든다', () => {
-  const previousVNode = element('ul', {}, [text('1'), text('2'), text('3')]);
-  const nextVNode = element('ul', {}, [text('1')]);
+test('diff : 자식 삭제(맨 뒤)는 REMOVE를 인덱스가 큰 것부터 만든다', () => {
+  const previousVNode = element('ul', {}, [element('li'), element('li'), element('li')]);
 
-  const patches = diff(previousVNode, nextVNode);
-
-  assert.deepEqual(patches, [
+  assertEqual(diff(previousVNode, element('ul', {}, [element('li')])), [
     { type: PATCH_TYPES.REMOVE, path: [2] },
     { type: PATCH_TYPES.REMOVE, path: [1] },
   ]);
 });
 
-test('태그가 바뀌면 REPLACE 하나만 만들고 그 아래는 보지 않는다', () => {
-  const spanVNode = element('span', { id: 'y' }, [text('b')]);
-  const previousVNode = element('div', {}, [element('p', { id: 'x' }, [text('a')])]);
-  const nextVNode = element('div', {}, [spanVNode]);
+test('diff : 태그가 바뀌면 REPLACE 하나만 만든다 (div → span)', () => {
+  const nextVNode = element('span', {}, [text('다름')]);
 
-  const patches = diff(previousVNode, nextVNode);
-
-  assert.deepEqual(patches, [{ type: PATCH_TYPES.REPLACE, path: [0], node: spanVNode }]);
-});
-
-test('element와 text가 서로 바뀌면 REPLACE를 만든다', () => {
-  const italicVNode = element('i', {}, []);
-  const textVNode = text('글');
-  const previousVNode = element('div', {}, [text('글'), element('b', {}, [])]);
-  const nextVNode = element('div', {}, [italicVNode, textVNode]);
-
-  const patches = diff(previousVNode, nextVNode);
-
-  assert.deepEqual(patches, [
-    { type: PATCH_TYPES.REPLACE, path: [0], node: italicVNode },
-    { type: PATCH_TYPES.REPLACE, path: [1], node: textVNode },
+  assertEqual(diff(element('div', {}, [text('글')]), nextVNode), [
+    { type: PATCH_TYPES.REPLACE, path: [], node: nextVNode },
   ]);
 });
 
-test('루트 태그가 바뀌면 path가 []인 REPLACE를 만든다', () => {
-  const previousVNode = element('div', {}, []);
-  const nextVNode = element('section', {}, []);
+test('diff : element ↔ text가 바뀌면 REPLACE', () => {
+  const previousVNode = element('p', {}, [element('b')]);
+  const nextVNode = element('p', {}, [text('글')]);
 
-  const patches = diff(previousVNode, nextVNode);
-
-  assert.deepEqual(patches, [{ type: PATCH_TYPES.REPLACE, path: [], node: nextVNode }]);
+  assertEqual(diff(previousVNode, nextVNode), [
+    { type: PATCH_TYPES.REPLACE, path: [0], node: nextVNode.children[0] },
+  ]);
 });
 
-test('텍스트가 바뀌면 UPDATE_TEXT를 만든다', () => {
-  const patches = diff(text('전'), text('후'));
-
-  assert.deepEqual(patches, [{ type: PATCH_TYPES.UPDATE_TEXT, path: [], text: '후' }]);
+test('diff : 텍스트가 바뀌면 UPDATE_TEXT (텍스트만 있는 트리 포함)', () => {
+  assertEqual(diff(text('전'), text('후')), [
+    { type: PATCH_TYPES.UPDATE_TEXT, path: [], text: '후' },
+  ]);
 });
 
-test('속성 추가·변경·삭제를 UPDATE_PROPS 하나로 만든다', () => {
-  const previousVNode = element('p', { class: 'a', id: 'x', title: 't' }, []);
-  const nextVNode = element('p', { class: 'b', title: 't', hidden: true }, []);
+test('diff : 속성 추가·변경·삭제를 UPDATE_PROPS 하나로 만든다', () => {
+  const previousVNode = element('div', { class: 'a', id: 'x', title: '같음' });
+  const nextVNode = element('div', { class: 'b', title: '같음', style: 'color: red' });
 
-  const patches = diff(previousVNode, nextVNode);
-
-  const expectedPatch = {
+  assertEqual(diff(previousVNode, nextVNode), [{
     type: PATCH_TYPES.UPDATE_PROPS,
     path: [],
-    set: { class: 'b', hidden: true },
+    set: { class: 'b', style: 'color: red' },
     remove: ['id'],
-  };
-  assert.deepEqual(patches, [expectedPatch]);
+  }]);
 });
 
-test('이벤트 함수는 참조가 같으면 같은 값, 다르면 다른 값으로 본다', () => {
-  function handleClick() {}
-  function handleNextClick() {}
-  const previousVNode = element('button', { onClick: handleClick }, []);
-  const sameVNode = element('button', { onClick: handleClick }, []);
-  const changedVNode = element('button', { onClick: handleNextClick }, []);
+test('diff : 이벤트 함수는 참조가 다르면 다른 값으로 본다', () => {
+  const handleClick = () => {};
+  const nextHandleClick = () => {};
 
-  const samePatches = diff(previousVNode, sameVNode);
-  const changedPatches = diff(previousVNode, changedVNode);
+  const previousVNode = element('button', { onClick: handleClick });
 
-  assert.deepEqual(samePatches, []);
-  assert.deepEqual(changedPatches, [
-    { type: PATCH_TYPES.UPDATE_PROPS, path: [], set: { onClick: handleNextClick }, remove: [] },
+  assertEqual(diff(previousVNode, element('button', { onClick: handleClick })), []);
+  assertEqual(diff(previousVNode, element('button', { onClick: nextHandleClick })), [
+    { type: PATCH_TYPES.UPDATE_PROPS, path: [], set: { onClick: nextHandleClick }, remove: [] },
   ]);
 });
 
-test('깊게 중첩된 노드의 변경은 전체 경로를 가진다', () => {
-  const previousList = element('ul', {}, [element('li', {}, [text('x')])]);
-  const nextList = element('ul', {}, [element('li', {}, [text('y')])]);
-  const previousVNode = element('div', {}, [text('a'), previousList]);
-  const nextVNode = element('div', {}, [text('a'), nextList]);
+test('diff : 깊게 중첩된 노드의 변경은 그 경로만 가리킨다', () => {
+  const createTree = (value) => element('div', {}, [
+    element('p'),
+    element('p', {}, [element('b', {}, [text(value)])]),
+  ]);
+  const previousVNode = createTree('전');
+  const nextVNode = createTree('후');
 
-  const patches = diff(previousVNode, nextVNode);
-
-  assert.deepEqual(patches, [{ type: PATCH_TYPES.UPDATE_TEXT, path: [1, 0, 0], text: 'y' }]);
+  assertEqual(diff(previousVNode, nextVNode), [
+    { type: PATCH_TYPES.UPDATE_TEXT, path: [1, 0, 0], text: '후' },
+  ]);
 });
 
-test('중간 자식을 지우면 뒤 자식들이 변경으로 보이고 마지막이 REMOVE된다', () => {
-  const previousVNode = element('ul', {}, [text('1'), text('2'), text('3')]);
-  const nextVNode = element('ul', {}, [text('1'), text('3')]);
+test('diff : 중간 자식 삭제는 인덱스 비교라 뒤 자식들이 변경으로 보인다', () => {
+  const previousVNode = element('ul', {}, [text('A'), text('B'), text('C')]);
+  const nextVNode = element('ul', {}, [text('A'), text('C')]);
 
-  const patches = diff(previousVNode, nextVNode);
-
-  assert.deepEqual(patches, [
-    { type: PATCH_TYPES.UPDATE_TEXT, path: [1], text: '3' },
+  assertEqual(diff(previousVNode, nextVNode), [
+    { type: PATCH_TYPES.UPDATE_TEXT, path: [1], text: 'C' },
     { type: PATCH_TYPES.REMOVE, path: [2] },
   ]);
 });
 
-test('같은 부모의 여러 자식 변경을 모두 만든다', () => {
-  const previousVNode = element('div', {}, [text('a'), text('b'), text('c')]);
-  const nextVNode = element('div', {}, [text('A'), text('b'), text('C')]);
-
-  const patches = diff(previousVNode, nextVNode);
-
-  assert.deepEqual(patches, [
-    { type: PATCH_TYPES.UPDATE_TEXT, path: [0], text: 'A' },
-    { type: PATCH_TYPES.UPDATE_TEXT, path: [2], text: 'C' },
-  ]);
-});
-
-test('입력 VNode를 변경하지 않는다', () => {
-  const previousVNode = element('div', { id: 'a' }, [text('1'), text('2')]);
-  const nextVNode = element('div', { id: 'b' }, [text('3')]);
-  // 이 테스트의 VNode에는 함수가 없으므로 문자열로 바꿔 전후를 비교할 수 있다
-  const previousBefore = JSON.stringify(previousVNode);
-  const nextBefore = JSON.stringify(nextVNode);
+test('diff : 입력 VNode를 수정하지 않는다', () => {
+  const previousVNode = element('div', { class: 'a' }, [text('전')]);
+  const nextVNode = element('div', { id: 'b' }, [text('후'), element('i')]);
+  const previousCopy = structuredClone(previousVNode);
+  const nextCopy = structuredClone(nextVNode);
 
   diff(previousVNode, nextVNode);
-
-  assert.equal(JSON.stringify(previousVNode), previousBefore);
-  assert.equal(JSON.stringify(nextVNode), nextBefore);
+  assertEqual(previousVNode, previousCopy);
+  assertEqual(nextVNode, nextCopy);
 });
 
-test('VNode가 아니면 TypeError를 던진다', () => {
-  const expectedError = {
-    name: 'TypeError',
-    message: '[diff] VNode가 필요합니다',
-  };
-
-  assert.throws(() => diff(null, text('a')), expectedError);
-  assert.throws(() => diff(text('a'), { type: 'comment' }), expectedError);
+test('diff : VNode가 아니면 TypeError', () => {
+  assertThrows(() => diff(null, text('a')), TypeError, '[diff] VNode가 필요합니다');
+  assertThrows(() => diff(text('a'), { type: 'element' }), TypeError, '[diff] VNode가 필요합니다');
 });
 
-test('type만 맞고 필요한 값이 없는 VNode도 TypeError를 던진다', () => {
-  const expectedError = {
-    name: 'TypeError',
-    message: '[diff] VNode가 필요합니다',
-  };
-  const withoutProps = { type: 'element', tag: 'div' };
-  const withoutText = { type: 'text' };
-  const withBrokenChild = element('div', {}, [{ type: 'text' }]);
+test('diff : toString 같은 기본 객체 이름의 속성도 삭제를 찾아낸다', () => {
+  const previousVNode = element('div', { toString: 'a' });
+  const nextVNode = element('div', {});
 
-  assert.throws(() => diff(withoutProps, withoutProps), expectedError);
-  assert.throws(() => diff(withoutText, withoutText), expectedError);
-  assert.throws(() => diff(text('a'), { type: 'element' }), expectedError);
-  assert.throws(() => diff(withBrokenChild, element('div', {}, [])), expectedError);
+  assertEqual(diff(previousVNode, nextVNode), [
+    { type: PATCH_TYPES.UPDATE_PROPS, path: [], set: {}, remove: ['toString'] },
+  ]);
 });

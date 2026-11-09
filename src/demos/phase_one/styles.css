@@ -12,27 +12,23 @@
   border: 1px dashed #888;
 }
 
-.phase-one .history-controls button:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.phase-one #history-position {
-  margin-left: 8px;
-  color: #555;
-}
-
-.phase-one #error-message {
-  min-height: 1.2em;
-  color: #c62828;
-}
-
 .phase-one #real-area {
+  min-height: 120px;
   padding: 8px;
   border: 1px solid #888;
 }
 
+.phase-one #error-message {
+  min-height: 1em;
+  color: #c62828;
+}
+
 .phase-one .edit-guide {
   color: #555;
-  font-size: 0.9em;
+  font-size: 14px;
+}
+
+.phase-one .history-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }

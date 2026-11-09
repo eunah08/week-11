@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미니 리액트 테스트</title>
+    <style>
+      .test-page { font-family: sans-serif; margin: 24px; }
+      .test-summary { font-weight: bold; }
+      .test-passed { color: #2e7d32; }
+      .test-failed { color: #c62828; }
+    </style>
+  </head>
+  <body class="test-page">
+    <h1>미니 리액트 테스트</h1>
+    <p class="test-summary" id="test-summary">실행 중…</p>
+    <ul id="test-results"></ul>
+    <script type="module">
+      import { runTests } from './testRunner.js';
+      import './core/vdom/domToVNode.test.js';
+      import './core/vdom/render.test.js';
+      import './core/vdom/props.test.js';
+      import './core/vdom/cloneVNode.test.js';
+      import './core/diff/diff.test.js';
+      import './core/patch/applyPatches.test.js';
+      import './demos/phase_one/StateHistory.test.js';
+
+      const results = runTests();
+      const failedCount = results.filter((result) => !result.isPassed).length;
+      const resultList = document.getElementById('test-results');
+
+      for (const result of results) {
+        const item = document.createElement('li');
+
+        item.className = result.isPassed ? 'test-passed' : 'test-failed';
+        item.textContent = result.isPassed
+          ? `통과 : ${result.name}`
+          : `실패 : ${result.name} — ${result.errorMessage}`;
+        resultList.append(item);
+      }
+
+      document.getElementById('test-summary').textContent =
+        `전체 ${results.length}개 중 통과 ${results.length - failedCount}개, 실패 ${failedCount}개`;
+      window.testResults = results;
+    </script>
+  </body>
+</html>

@@ -1,168 +1,144 @@
-// vdom 폴더에는 index.js가 없고, core/index.js를 거치면 순환 import가 되므로 파일을 직접 불러온다
-import { NODE_TYPES } from '../vdom/nodeTypes.js';
-import { isVNode } from '../vdom/isVNode.js';
+import { NODE_TYPES, isVNode } from '../vdom/index.js';
 import { PATCH_TYPES } from './patchTypes.js';
+
+const NOT_VNODE_MESSAGE = '[diff] VNode가 필요합니다';
+
+// 종류가 같은 두 VNode를 비교하는 방법. 새 VNode 종류를 비교하려면 이 표에 한 줄을 추가한다.
+// 모든 비교 함수는 (이전 VNode, 다음 VNode, path)를 받아 Patch 배열을 돌려준다.
+const SAME_TYPE_DIFFER_BY_VNODE_TYPE = new Map([
+  [NODE_TYPES.TEXT, diffText],
+  [NODE_TYPES.ELEMENT, diffElement],
+]);
 
 /**
  * 두 Virtual DOM을 비교해 변경 목록을 만든다. (Phase 1 문서 8.3)
+ * 입력 VNode는 수정하지 않는다.
  * @param {object} previousVNode 이전 VNode
  * @param {object} nextVNode 다음 VNode
  * @returns {object[]} Patch 배열 (바뀐 게 없으면 빈 배열)
  * @throws {TypeError} 둘 중 하나라도 VNode가 아닐 때
  */
-export function diff(previousVNode, nextVNode) { // 두 VNode를 비교해 변경 목록(Patch 배열)을 만든다
-  const isPreviousVNode = isVNode(previousVNode);
-  const isNextVNode = isVNode(nextVNode);
-  if (!isPreviousVNode || !isNextVNode) {
-    throw new TypeError('[diff] VNode가 필요합니다'); // 경고문
+export function diff(previousVNode, nextVNode) {
+  if (!isVNode(previousVNode) || !isVNode(nextVNode)) {
+    throw new TypeError(NOT_VNODE_MESSAGE);
   }
 
-  // 루트 자신의 경로는 빈 배열이다
   const rootPath = [];
-  const patches = diffNode(previousVNode, nextVNode, rootPath);
-  return patches;
+
+  return diffNode(previousVNode, nextVNode, rootPath);
 }
 
-function diffNode(previousVNode, nextVNode, path) { // 노드 하나와 그 아래를 비교해 Patch 목록을 만든다
-  const isTypeChanged = previousVNode.type !== nextVNode.type;
-  const isTextNode = nextVNode.type === NODE_TYPES.TEXT;
-  const isTagChanged = previousVNode.tag !== nextVNode.tag;
-
-  if (isTypeChanged) {
-    // element ↔ text처럼 종류가 다르면 통째로 교체하고 그 아래는 보지 않는다
+// 입력 검증은 공개 함수 가드에서만 한다. (11장) 자식은 검증된 VNode라고 믿는다.
+function diffNode(previousVNode, nextVNode, path) {
+  if (isReplaceNeeded(previousVNode, nextVNode)) {
     return [createReplacePatch(nextVNode, path)];
-  } else if (isTextNode) {
-    // 텍스트 노드는 tag가 없으므로 태그 비교보다 먼저 처리한다
-    return diffText(previousVNode, nextVNode, path);
-  } else if (isTagChanged) {
-    // div → span처럼 태그가 다르면 통째로 교체한다
-    return [createReplacePatch(nextVNode, path)];
-  } else {
-    return diffElement(previousVNode, nextVNode, path);
   }
+
+  const diffSameType = SAME_TYPE_DIFFER_BY_VNODE_TYPE.get(nextVNode.type);
+
+  return diffSameType(previousVNode, nextVNode, path);
 }
 
-function createReplacePatch(nextVNode, path) { // REPLACE Patch 하나를 만든다
-  const replacePatch = {
-    type: PATCH_TYPES.REPLACE,
-    path: path,
-    node: nextVNode,
-  };
-  return replacePatch;
+// 종류가 다르거나, 같은 요소라도 태그가 다르면 통째로 교체한다.
+function isReplaceNeeded(previousVNode, nextVNode) {
+  const isTypeChanged = previousVNode.type !== nextVNode.type;
+  const isTagChanged = nextVNode.type === NODE_TYPES.ELEMENT && previousVNode.tag !== nextVNode.tag;
+
+  return isTypeChanged || isTagChanged;
 }
 
-function diffText(previousVNode, nextVNode, path) { // 텍스트가 다르면 UPDATE_TEXT를 만든다
+function createReplacePatch(nextVNode, path) {
+  return { type: PATCH_TYPES.REPLACE, path, node: nextVNode };
+}
+
+function diffText(previousVNode, nextVNode, path) {
   if (previousVNode.text === nextVNode.text) {
     return [];
   }
 
-  const textPatch = {
-    type: PATCH_TYPES.UPDATE_TEXT,
-    path: path,
-    text: nextVNode.text,
-  };
-  return [textPatch];
+  return [{ type: PATCH_TYPES.UPDATE_TEXT, path, text: nextVNode.text }];
 }
 
-function diffElement(previousVNode, nextVNode, path) { // 같은 태그의 요소를 비교한다 (속성 먼저, 그다음 자식)
-  const propPatches = diffProps(previousVNode.props, nextVNode.props, path);
+// 속성을 먼저 비교하고, 그다음 자식을 비교한다.
+function diffElement(previousVNode, nextVNode, path) {
+  const propPatches = createPropsPatches(previousVNode.props, nextVNode.props, path);
   const childPatches = diffChildren(previousVNode.children, nextVNode.children, path);
 
-  const patches = propPatches.concat(childPatches);
-  return patches;
+  return propPatches.concat(childPatches);
 }
 
-function diffProps(previousProps, nextProps, path) { // 속성이 바뀌었으면 UPDATE_PROPS를 만든다
-  const set = createSetProps(previousProps, nextProps);
-  const remove = createRemoveKeys(previousProps, nextProps);
+function createPropsPatches(previousProps, nextProps, path) {
+  const { set, remove } = diffProps(previousProps, nextProps);
+  const hasPropChanges = Object.keys(set).length > 0 || remove.length > 0;
 
-  const hasSetProps = Object.keys(set).length > 0;
-  const hasRemoveKeys = remove.length > 0;
-  if (!hasSetProps && !hasRemoveKeys) {
-    return [];
-  }
-
-  const propsPatch = {
-    type: PATCH_TYPES.UPDATE_PROPS,
-    path: path,
-    set: set,
-    remove: remove,
-  };
-  return [propsPatch];
+  return hasPropChanges ? [{ type: PATCH_TYPES.UPDATE_PROPS, path, set, remove }] : [];
 }
 
-function createSetProps(previousProps, nextProps) { // 새로 생겼거나 값이 바뀐 속성을 모은다
+// set : 새로 생겼거나 값이 바뀐 속성, remove : 이전에만 있던 속성 이름
+// 함수 값도 Object.is로 비교하므로 참조가 다르면 다른 값으로 본다.
+// in 대신 Object.hasOwn을 써서 toString 같은 기본 객체 이름을 props로 착각하지 않는다.
+function diffProps(previousProps, nextProps) {
   const set = {};
-  for (const key of Object.keys(nextProps)) {
-    const isNewKey = !Object.hasOwn(previousProps, key);
-    // 이벤트 함수도 참조가 다르면 다른 값으로 본다
-    const isChangedValue = previousProps[key] !== nextProps[key];
+  const remove = [];
 
-    if (isNewKey || isChangedValue) {
-      set[key] = nextProps[key];
+  for (const [key, value] of Object.entries(nextProps)) {
+    const isNewKey = !Object.hasOwn(previousProps, key);
+
+    if (isNewKey || !Object.is(previousProps[key], value)) {
+      set[key] = value;
     }
   }
-  return set;
-}
 
-function createRemoveKeys(previousProps, nextProps) { // 이전에만 있던 속성 이름을 모은다
-  const remove = [];
   for (const key of Object.keys(previousProps)) {
-    const isRemovedKey = !Object.hasOwn(nextProps, key);
-
-    if (isRemovedKey) {
+    if (!Object.hasOwn(nextProps, key)) {
       remove.push(key);
     }
   }
-  return remove;
+
+  return { set, remove };
 }
 
-function diffChildren(previousChildren, nextChildren, path) { // 자식들을 같은 인덱스끼리 비교한다
+// 같은 인덱스끼리 비교한다. 남는 새 자식은 INSERT(오름차순), 남는 이전 자식은 REMOVE(내림차순). (8.2)
+function diffChildren(previousChildren, nextChildren, path) {
   const commonLength = Math.min(previousChildren.length, nextChildren.length);
-
   const commonPatches = diffCommonChildren(previousChildren, nextChildren, path);
   const insertPatches = createInsertPatches(nextChildren, commonLength, path);
   const removePatches = createRemovePatches(previousChildren, commonLength, path);
 
-  const patches = commonPatches.concat(insertPatches, removePatches);
-  return patches;
+  return commonPatches.concat(insertPatches, removePatches);
 }
 
-function diffCommonChildren(previousChildren, nextChildren, path) { // 공통 구간의 자식을 같은 인덱스끼리 비교한다
+// 공통 구간은 push로 한 배열에 모은다. concat을 반복하면 형제가 많을 때 느려진다.
+function diffCommonChildren(previousChildren, nextChildren, path) {
   const commonLength = Math.min(previousChildren.length, nextChildren.length);
+  const patches = [];
 
-  let patches = [];
   for (let i = 0; i < commonLength; i++) {
-    const childPath = path.concat([i]);
-    const childPatches = diffNode(previousChildren[i], nextChildren[i], childPath);
-    patches = patches.concat(childPatches);
+    for (const patch of diffNode(previousChildren[i], nextChildren[i], [...path, i])) {
+      patches.push(patch);
+    }
   }
+
   return patches;
 }
 
-function createInsertPatches(nextChildren, commonLength, path) { // 남는 새 자식을 INSERT로 만든다 (오름차순)
+function createInsertPatches(nextChildren, commonLength, path) {
   const patches = [];
+
   for (let i = commonLength; i < nextChildren.length; i++) {
-    const insertPatch = {
-      type: PATCH_TYPES.INSERT,
-      path: path,
-      index: i,
-      node: nextChildren[i],
-    };
-    patches.push(insertPatch);
+    patches.push({ type: PATCH_TYPES.INSERT, path, index: i, node: nextChildren[i] });
   }
+
   return patches;
 }
 
-function createRemovePatches(previousChildren, commonLength, path) { // 남는 이전 자식을 REMOVE로 만든다 (내림차순)
+function createRemovePatches(previousChildren, commonLength, path) {
   const patches = [];
-  // 뒤에서부터 지워야 앞쪽 인덱스가 밀리지 않는다 (8.2)
+
+  // 뒤에서부터 지워야 앞쪽 인덱스가 밀리지 않는다.
   for (let i = previousChildren.length - 1; i >= commonLength; i--) {
-    const removePatch = {
-      type: PATCH_TYPES.REMOVE,
-      path: path.concat([i]),
-    };
-    patches.push(removePatch);
+    patches.push({ type: PATCH_TYPES.REMOVE, path: [...path, i] });
   }
+
   return patches;
 }

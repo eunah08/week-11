@@ -1,112 +1,84 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { JSDOM } from 'jsdom';
-import { domToVNode, NODE_TYPES } from '../../../src/core/index.js';
+import { domToVNode } from '../../../src/core/index.js';
+import { test, assertEqual, assertThrows, assertTrue } from '../../testRunner.js';
 
-// Node.js에는 브라우저 DOM이 없으므로 jsdom으로 만든 DOM을 전역에 넣는다
-const jsdom = new JSDOM('');
-globalThis.document = jsdom.window.document;
-globalThis.Node = jsdom.window.Node;
+function createDomNode(html) {
+  const template = document.createElement('template');
 
-function createRootNode(html) { // HTML 문자열을 DOM으로 만들고 첫 요소를 돌려준다
-  const container = document.createElement('div');
-  container.innerHTML = html;
-  return container.firstElementChild;
+  template.innerHTML = html;
+  return template.content.firstChild;
 }
 
-test('요소·텍스트·속성·중첩 구조를 변환한다', () => {
-  const rootNode = createRootNode('<DIV class="box" id="main"><p>안녕<b>하세요</b></p></DIV>');
+test('domToVNode : 요소, 텍스트, 속성, 중첩 구조를 변환한다', () => {
+  const domNode = createDomNode('<DIV class="box" id="main"><p>안녕 <b>굵게</b></p></DIV>');
 
-  const vnode = domToVNode(rootNode);
-
-  const expectedVNode = {
-    type: NODE_TYPES.ELEMENT,
+  assertEqual(domToVNode(domNode), {
+    type: 'element',
     tag: 'div',
     props: { class: 'box', id: 'main' },
-    children: [
-      {
-        type: NODE_TYPES.ELEMENT,
-        tag: 'p',
-        props: {},
-        children: [
-          { type: NODE_TYPES.TEXT, text: '안녕' },
-          {
-            type: NODE_TYPES.ELEMENT,
-            tag: 'b',
-            props: {},
-            children: [{ type: NODE_TYPES.TEXT, text: '하세요' }],
-          },
-        ],
-      },
-    ],
-  };
-  assert.deepEqual(vnode, expectedVNode);
+    children: [{
+      type: 'element',
+      tag: 'p',
+      props: {},
+      children: [
+        { type: 'text', text: '안녕 ' },
+        { type: 'element', tag: 'b', props: {}, children: [{ type: 'text', text: '굵게' }] },
+      ],
+    }],
+  });
 });
 
-test('주석과 공백만 있는 텍스트는 무시한다', () => {
-  const rootNode = createRootNode('<ul>\n  <!-- 주석 -->\n  <li>하나</li>\n  \n</ul>');
+test('domToVNode : 주석, 공백 텍스트, script, style은 무시한다', () => {
+  const html = '<div>\n  <!-- 주석 --><script>1</script><style>p{}</style><i>남음</i>\n</div>';
+  const domNode = createDomNode(html);
 
-  const vnode = domToVNode(rootNode);
-
-  assert.equal(vnode.children.length, 1);
-  assert.equal(vnode.children[0].tag, 'li');
-
-  const commentNode = document.createComment('주석');
-  const spaceTextNode = document.createTextNode('  \n ');
-  const emptyTextNode = document.createTextNode('');
-  assert.equal(domToVNode(commentNode), null);
-  assert.equal(domToVNode(spaceTextNode), null);
-  assert.equal(domToVNode(emptyTextNode), null);
+  assertEqual(domToVNode(domNode).children, [
+    { type: 'element', tag: 'i', props: {}, children: [{ type: 'text', text: '남음' }] },
+  ]);
+  assertEqual(domToVNode(document.createComment('x')), null);
+  assertEqual(domToVNode(document.createTextNode('   ')), null);
+  assertEqual(domToVNode(document.createTextNode('')), null);
 });
 
-test('텍스트 앞뒤 공백은 그대로 둔다', () => {
-  const textNode = document.createTextNode('  글자 ');
-
-  const vnode = domToVNode(textNode);
-
-  assert.deepEqual(vnode, { type: NODE_TYPES.TEXT, text: '  글자 ' });
+test('domToVNode : 탭·줄바꿈만 있는 텍스트도 공백으로 보고 무시한다', () => {
+  assertEqual(domToVNode(document.createTextNode('\n\t  \r\n')), null);
 });
 
-test('텍스트 노드만 있는 트리도 변환한다', () => {
-  const rootNode = createRootNode('<p>글자만 있음</p>');
+test('domToVNode : &nbsp;만 있는 텍스트는 내용으로 남긴다', () => {
+  const domNode = createDomNode('<p><b>가</b>&nbsp;<i>나</i></p>');
 
-  const vnode = domToVNode(rootNode);
-
-  assert.deepEqual(vnode.children, [{ type: NODE_TYPES.TEXT, text: '글자만 있음' }]);
+  assertEqual(domToVNode(domNode).children[1], { type: 'text', text: ' ' });
 });
 
-test('script와 style 태그는 null로 처리한다', () => {
-  const rootNode = createRootNode('<div><script>1</script><style>p{}</style><span>남음</span></div>');
-
-  const vnode = domToVNode(rootNode);
-
-  assert.equal(vnode.children.length, 1);
-  assert.equal(vnode.children[0].tag, 'span');
-
-  const scriptNode = document.createElement('script');
-  assert.equal(domToVNode(scriptNode), null);
+test('domToVNode : 텍스트 앞뒤 공백은 그대로 둔다', () => {
+  assertEqual(domToVNode(document.createTextNode('  글자 ')), { type: 'text', text: '  글자 ' });
 });
 
-test('자식이 없는 요소는 빈 children 배열을 가진다', () => {
-  const sectionNode = document.createElement('section');
-
-  const vnode = domToVNode(sectionNode);
-
-  const expectedVNode = {
-    type: NODE_TYPES.ELEMENT,
-    tag: 'section',
-    props: {},
-    children: [],
-  };
-  assert.deepEqual(vnode, expectedVNode);
+test('domToVNode : 자식이 없는 요소는 빈 children을 가진다', () => {
+  assertEqual(domToVNode(createDomNode('<span></span>')).children, []);
 });
 
-test('Node가 아니면 TypeError를 던진다', () => {
-  const expectedError = {
-    name: 'TypeError',
-    message: '[domToVNode] Node가 필요합니다',
-  };
+test('domToVNode : 특수 속성(checked, disabled, value, style)도 읽는다', () => {
+  const html = '<input type="checkbox" checked disabled value="a" style="color: red">';
+  const domNode = createDomNode(html);
 
-  assert.throws(() => domToVNode({}), expectedError);
-  assert.throws(() => domToVNode(null), expectedError);
+  assertEqual(domToVNode(domNode).props, {
+    type: 'checkbox',
+    checked: '',
+    disabled: '',
+    value: 'a',
+    style: 'color: red',
+  });
+});
+
+test('domToVNode : DOM을 읽기만 한다', () => {
+  const domNode = createDomNode('<div><!-- c --> <p>글</p></div>');
+  const htmlBefore = domNode.outerHTML;
+
+  domToVNode(domNode);
+  assertTrue(domNode.outerHTML === htmlBefore, 'DOM이 바뀌었다');
+});
+
+test('domToVNode : Node가 아니면 TypeError', () => {
+  assertThrows(() => domToVNode({}), TypeError, '[domToVNode] Node가 필요합니다');
+  assertThrows(() => domToVNode(null), TypeError, '[domToVNode] Node가 필요합니다');
 });

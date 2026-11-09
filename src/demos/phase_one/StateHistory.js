@@ -1,22 +1,25 @@
 import { isVNode } from '../../core/index.js';
 
+const BACK_STEP = -1;
+const FORWARD_STEP = 1;
+
 /**
- * Patch할 때마다 저장하는 VNode 기록. (Phase 1 문서 9.2)
- * 기록 개수에는 제한이 없고, DOM 노드가 아닌 VNode만 저장한다.
+ * Patch할 때마다 저장하는 VNode 기록. 뒤로가기·앞으로가기에 사용한다. (Phase 1 문서 9.2)
+ * DOM 노드는 저장하지 않고, 실제 DOM도 수정하지 않는다.
+ * 기록 배열과 현재 위치는 # 비공개 필드라서 바깥에서 직접 바꿀 수 없다. (메서드로만 바뀐다)
  */
 export class StateHistory {
+  #vnodes;
+  #currentIndex;
+
   /**
    * @param {object} initialVNode 첫 기록
    * @throws {TypeError} VNode가 아닌 값이 올 때
    */
-  constructor(initialVNode) { // 첫 기록을 저장한다
-    if (!isVNode(initialVNode)) {
-      throw new TypeError('[StateHistory] VNode가 필요합니다'); // 경고문
-    }
-
-    // 저장한 VNode 목록과, 지금 보고 있는 기록의 위치
-    this.vnodes = [initialVNode];
-    this.currentIndex = 0;
+  constructor(initialVNode) {
+    assertVNode(initialVNode);
+    this.#vnodes = [initialVNode];
+    this.#currentIndex = 0;
   }
 
   /**
@@ -25,66 +28,67 @@ export class StateHistory {
    * @returns {void}
    * @throws {TypeError} VNode가 아닌 값이 올 때
    */
-  push(vnode) { // 새 기록을 붙인다 (현재 위치 뒤의 기록은 버린다)
-    if (!isVNode(vnode)) {
-      throw new TypeError('[StateHistory] VNode가 필요합니다'); // 경고문
-    }
-
-    // 뒤로가기한 상태에서 새 기록을 넣으면, 현재 위치 뒤의 기록(앞으로가기 기록)은 버린다
-    const keepCount = this.currentIndex + 1;
-    this.vnodes = this.vnodes.slice(0, keepCount);
-
-    this.vnodes.push(vnode);
-    this.currentIndex = this.vnodes.length - 1;
+  push(vnode) {
+    assertVNode(vnode);
+    this.#vnodes = [...this.#vnodes.slice(0, this.#currentIndex + 1), vnode];
+    this.#currentIndex = this.#vnodes.length - 1;
   }
 
   /** @returns {object | null} 한 칸 뒤의 VNode (더 못 가면 null) */
-  back() { // 한 칸 뒤로 가서 VNode를 돌려준다 (못 가면 null)
-    if (!this.canGoBack()) {
-      return null;
-    }
-
-    this.currentIndex = this.currentIndex - 1;
-    return this.getCurrent();
+  back() {
+    return this.#move(BACK_STEP);
   }
 
   /** @returns {object | null} 한 칸 앞의 VNode (더 못 가면 null) */
-  forward() { // 한 칸 앞으로 가서 VNode를 돌려준다 (못 가면 null)
-    if (!this.canGoForward()) {
-      return null;
-    }
-
-    this.currentIndex = this.currentIndex + 1;
-    return this.getCurrent();
+  forward() {
+    return this.#move(FORWARD_STEP);
   }
 
   /** @returns {object} 현재 VNode */
-  getCurrent() { // 현재 VNode를 돌려준다
-    return this.vnodes[this.currentIndex];
+  getCurrent() {
+    return this.#vnodes[this.#currentIndex];
   }
 
   /** @returns {boolean} 뒤로 갈 수 있는지 */
-  canGoBack() { // 뒤로 갈 수 있는지 알려준다
-    const isFirstRecord = this.currentIndex === 0;
-    return !isFirstRecord;
+  canGoBack() {
+    return this.#canMove(BACK_STEP);
   }
 
   /** @returns {boolean} 앞으로 갈 수 있는지 */
-  canGoForward() { // 앞으로 갈 수 있는지 알려준다
-    const lastIndex = this.vnodes.length - 1;
-    const isLastRecord = this.currentIndex === lastIndex;
-    return !isLastRecord;
+  canGoForward() {
+    return this.#canMove(FORWARD_STEP);
   }
 
-  /**
-   * 화면의 이력 위치 표시용 정보. (협약에 없는 추가 메서드)
-   * @returns {{ index: number, count: number }} 현재 위치(0부터)와 전체 기록 개수
-   */
-  getPosition() { // 현재 위치와 전체 기록 개수를 돌려준다
-    const position = {
-      index: this.currentIndex,
-      count: this.vnodes.length,
-    };
-    return position;
+  /** @returns {number} 현재 위치 (1부터 셈, 화면 표시용) */
+  getPosition() {
+    return this.#currentIndex + 1;
+  }
+
+  /** @returns {number} 전체 기록 개수 (화면 표시용) */
+  getCount() {
+    return this.#vnodes.length;
+  }
+
+  // 이동 규칙을 한 곳에 모은다. 여러 칸 이동이 필요해지면 step만 바꿔 쓰면 된다.
+  #move(step) {
+    if (!this.#canMove(step)) {
+      return null;
+    }
+
+    this.#currentIndex += step;
+    return this.getCurrent();
+  }
+
+  #canMove(step) {
+    const targetIndex = this.#currentIndex + step;
+
+    return targetIndex >= 0 && targetIndex < this.#vnodes.length;
+  }
+}
+
+// VNode 형식 기준은 core의 isVNode 하나를 diff와 함께 쓴다.
+function assertVNode(value) {
+  if (!isVNode(value)) {
+    throw new TypeError('[StateHistory] VNode가 필요합니다');
   }
 }
