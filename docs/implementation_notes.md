@@ -28,7 +28,24 @@
 
 ## Hook 값이 유지되는 방식
 
-Phase 2에서 작성한다.
+- 루트 컴포넌트마다 `FunctionComponent` 인스턴스가 `hooks` 배열 하나를 가진다.
+  Hook을 한 번 부를 때마다 배열의 칸 하나를 쓰고, 렌더링이 시작될 때 `hookIndex`를 0으로 되돌려
+  같은 순서로 같은 칸을 다시 찾아간다. 그래서 값이 렌더링이 끝나도 유지된다.
+- 칸을 꺼내는 일은 `hooks/getHookSlot.js`의 `getHookSlot` 한 곳에서 한다. 이 함수가
+  렌더링 문맥(`component/hookContext.js`)과 Hook 종류(`HOOK_KINDS`)를 검사하므로 세 Hook이
+  같은 에러 메시지를 낸다.
+- 칸의 모양
+    - `useState` : `{ kind: 'state', value, setValue }`. `setValue`는 칸을 만들 때 한 번만 만들어
+      렌더링이 바뀌어도 같은 함수다.
+    - `useEffect` : `{ kind: 'effect', dependencies, cleanup }`
+    - `useMemo` : `{ kind: 'memo', dependencies, value }`
+- 의존성 비교는 `hooks/isDepsChanged.js` 한 곳에서 한다. 이전 의존성이 `undefined`(첫 실행)이거나
+  이번 의존성이 `undefined`(생략)이면 바뀐 것으로 본다. 그래서 생략하면 매번, `[]`이면 첫 렌더링에서만 실행된다.
+- Effect는 렌더링 중에는 `pendingEffects`에 넣어 두기만 하고, `render`·`applyPatches`로 DOM을 반영한 뒤
+  등록한 순서대로 실행한다. 각 Effect는 실행 직전에 자기 이전 cleanup을 먼저 부르고, 의존성은
+  실제로 실행한 뒤에 기억한다. `unmount()`는 `hooks`를 앞에서부터 돌며 남은 cleanup을 부른다.
+- `unmount()`는 `hooks`를 비운다. 상태 변경 함수는 자기 칸이 아직 `hooks`에 있는지 확인하므로,
+  해제된 뒤(다시 mount한 뒤의 옛 함수 포함)에는 아무 일도 하지 않는다.
 
 ## 지원하는 DOM·속성·이벤트 범위
 
@@ -80,7 +97,28 @@ Phase 2에서 작성한다.
 ## 렌더링 시점과 Batching 지원 여부
 
 - Phase 1 : Patch 버튼을 누를 때만 diff와 반영이 일어난다. Batching은 없다.
-- Phase 2 내용은 Phase 2에서 작성한다.
+- Phase 2 : **Batching을 지원한다.** (협약 19장 결정 필요 — 팀 확인 전 임시 채택)
+    - 상태 변경 함수는 값만 바꾸고 `requestUpdate()`로 마이크로태스크 1개를 예약한다.
+      같은 핸들러 안에서 상태를 여러 번 바꿔도 `update()`는 한 번만 실행된다. (코드 표시: `// Batching`)
+    - 그래서 setter 직후의 화면은 아직 그대로다. 코드에서 바로 확인해야 하면 `flushUpdate()`를 부른다.
+      (테스트는 `flushUpdate()`로 동기 반영, 실제 마이크로태스크 자동 반영은 브라우저에서 확인함)
+    - 마이크로태스크에서 난 에러는 `instance.onError`가 있으면 거기로 넘기고, 없으면 그대로 던진다.
+      데모는 `app.js`에서 `onError`로 에러 문구를 화면에 보여 준다.
+    - 렌더링 중에 상태를 바꾸면 `Error`다. (무한 반복 방지, 협약 14장 엣지 케이스)
+    - Effect 안에서 상태를 바꾸면 `update()`가 중첩해서 실행된다. 이때 아직 실행하지 않은
+      낡은 렌더링의 Effect는 건너뛴다. (`FunctionComponent`의 `renderCount`)
+
+## 차별화 요소 (Phase 2 추가)
+
+- Debouncing (`hooks/useDebouncedValue.js`) : `useState` + `useEffect`(cleanup에서 `clearTimeout`)로 만든
+  Hook. 값이 `delayMs` 동안 안 바뀌어야 따라온다. 데모 검색창은 300ms(`SEARCH_DELAY_MS`).
+- Batching : 위 "렌더링 시점" 참고. 관련 파일 `FunctionComponent.js`, `hooks/useState.js`.
+- Memoization : `memo(component)`(`component/memo.js`), `useCallback`(`hooks/useCallback.js`),
+  `useMemo`. `memo` 컴포넌트는 `MemoCache`(`component/MemoCache.js`)가 "컴포넌트 + 호출 순번" 기준으로
+  props를 얕게 비교해 같으면 이전 VNode를 그대로 돌려준다. 배열 props는 항목별로 비교한다.
+- Selective Rendering : `memo`가 같은 VNode 객체를 돌려주면 `diff`가 참조가 같다고 보고 하위 비교를
+  통째로 건너뛴다. (`diff.js` `diffNode` 맨 위, **Phase 1 파일을 수정한 유일한 곳**)
+- 각 코드 위에 `// Batching`, `// Memoization`, `// Selective Rendering`, `// Debouncing` 주석을 달았다.
 
 ## 알려진 제한
 
@@ -93,6 +131,28 @@ Phase 2에서 작성한다.
   Patch 버튼도 같아서, 중간에 실패하면 실제 영역이 일부만 바뀐 채 이력에는 저장되지 않는다.
   이 상태에서 다음 diff는 실제 DOM과 다른 VNode를 기준으로 계산되므로, 에러가 나면 새로고침해야 한다.
 - 속성 이름이 `__proto__`이면 일반 객체인 `props`에 들어가지 않아 조용히 빠진다.
+
+## Phase 2 알려진 제한
+
+- `createElement`는 공백만 있는 문자열 자식(`''`, `' '`, `'\n'`)을 버린다. Phase 1 문서 6.2 "공백만 있는
+  텍스트는 VNode로 만들지 않는다"와 `applyPatches`의 path 계산을 맞추기 위해서다. 공백 기준은
+  `vdom/isIgnoredNode.js`의 `WHITESPACE_ONLY_PATTERN`과 같은 정규식을 `createElement.js`에도 적어 두었다.
+  (한쪽만 바꾸면 path가 어긋나므로 같이 고친다. 이 파일을 export해서 공유하자는 제안은 팀 확인 필요)
+- 글자 앞뒤 공백(`' 남은 개수 '`)은 그대로 둔다. `&nbsp;`만 있는 글자는 남는다.
+- Hook 호출 순서 검사는 "같은 칸의 Hook 종류가 바뀌면 `Error`"까지다. 조건문 때문에 호출 개수만
+  줄어들고 종류는 그대로 이어지는 경우(예: `useState`가 연달아 있을 때)는 잡지 못한다.
+- `useEffect`·`useMemo`의 의존성이 배열이 아닌 값이면 검사하지 않는다. (협약에 에러 조건이 없다)
+- Effect의 cleanup은 Effect마다 "자기 cleanup → 자기 Effect" 순서다. 여러 Effect의 cleanup을
+  모두 먼저 부르는 방식(React)과 순서가 다를 수 있다.
+- 자식 컴포넌트는 인덱스로만 비교되므로(`key` 미지원) 목록 중간을 지우면 뒤 항목들이 모두 변경으로
+  처리된다. 화면은 맞게 나오지만 DOM 노드가 재사용되는 짝이 달라질 수 있다.
+- `update()` 도중 `applyPatches`가 실패하면 DOM과 `currentVNode`가 어긋날 수 있다. (Phase 1과 같은 제한)
+- Memoization 캐시는 `key`가 없어 인덱스(호출 순번) 기준이다. 목록 중간을 지우면 적중률만 떨어질 뿐
+  화면은 항상 맞다.
+- `diff`는 참조 shortcut 전에도 `isVNode`로 전체 트리를 검사하므로 비용은 줄지만 0은 아니다.
+- `memo`는 자식(`children`) 배열도 props로 비교한다. 자식이 매번 새로 만들어지면 적중하지 않는다.
+- `FunctionComponent`는 `unmount()` 후 다시 `mount()`할 수 있고, 이때 Hook 값은 새로 시작한다.
+  mount하지 않은 상태의 `unmount()`는 아무 일도 하지 않는다. (협약에 없어 정한 해석, 팀 확인 필요)
 
 ## 보안
 
@@ -118,9 +178,28 @@ Phase 2에서 작성한다.
     - `cloneVNode(vnode)` (`src/core/vdom/cloneVNode.js`) : VNode 깊은 복사. 지금 core 안에서는 쓰지 않는다.
       Phase 2에서 이전 VNode를 보관할 때 쓰려고 두었다. (협약 4장 "미리 만든 보조 파일 금지"와 부딪히면 지운다)
 
+- Phase 2에서 협약 5·6·7장 밖에 정한 것 (모두 팀 확인 필요)
+    - `createElement` : `props`가 객체·`null`이 아니면 `TypeError`, 자식으로 쓸 수 없는 값(일반 객체,
+      심볼 등)이면 `TypeError`, 자식 컴포넌트가 VNode를 돌려주지 않으면 `TypeError`.
+    - 자식 컴포넌트에는 `Object.freeze`한 `{ ...props, children }`를 넘긴다. `children`은 정규화한
+      VNode 배열이다. 협약 2장 "props를 변경하지 않는다"를 실제로 막는다.
+    - `FunctionComponent` 생성자는 `container`가 DOM 요소가 아니면 `TypeError`다.
+    - `useState` 상태 변경 함수를 렌더링 중에 부르면 `Error` — `[useState] 렌더링 중에는 상태를 바꿀 수 없습니다`
+    - 보조 파일 : `component/index.js`, `patch/index.js` (다른 폴더는 `index.js`로 불러오는 규칙에 맞추기 위해),
+      `hooks/getHookSlot.js`, `hooks/isDepsChanged.js`
+- 데모(`src/demos/phase_two`) : 할 일 목록. 루트 `todoApp`이 `useState` 3개(할 일, 입력 중인 글자, 필터),
+  `useMemo` 2개(보이는 할 일, 남은 개수), `useEffect` 1개(탭 제목에 남은 개수 붙이기, cleanup으로 되돌리기)를
+  쓰고, 자식 `todoForm`·`todoFilter`·`todoList`·`todoItem`·`todoSummary`는 props만 받는 순수 함수다.
+    - 함수 이름은 협약 3장(`camelCase`)대로 `todoApp`처럼 소문자로 시작한다.
+    - 필터를 추가하려면 `todoFilter.js`의 `FILTERS`, `SHOW_RULE_BY_FILTER`, `FILTER_BUTTONS`에 한 줄씩 더한다.
+    - 화면 요소는 `data-role`로 찾는다. 바꾸려면 `app.js`의 `PAGE_SELECTORS`를 고친다.
+
 ## 핵심 로직을 설명할 때 참고할 파일
 
 - `src/core/vdom/domToVNode.js`, `src/core/vdom/render.js`, `src/core/vdom/props.js`
 - `src/core/diff/diff.js`, `src/core/patch/applyPatches.js`
 - `src/demos/phase_one/StateHistory.js`, `src/demos/phase_one/app.js`
+- Phase 2 : `src/core/component/FunctionComponent.js`, `src/core/component/createElement.js`,
+  `src/core/hooks/getHookSlot.js`, `src/core/hooks/useState.js`, `src/core/hooks/useEffect.js`,
+  `src/core/hooks/useMemo.js`, `src/core/component/MemoCache.js`, `src/core/hooks/useDebouncedValue.js`, `src/demos/phase_two/components/todoApp.js`
 - 테스트 : 로컬 서버를 띄우고 `/tests/index.html`을 연다.
