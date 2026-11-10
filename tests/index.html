@@ -24,6 +24,13 @@
       import './core/diff/diff.test.js';
       import './core/patch/applyPatches.test.js';
       import './demos/phase_one/StateHistory.test.js';
+      import './core/component/createElement.test.js';
+      import './core/component/FunctionComponent.test.js';
+      import './core/hooks/useState.test.js';
+      import './core/hooks/useEffect.test.js';
+      import './core/hooks/useMemo.test.js';
+      import './core/hooks/getHookSlot.test.js';
+      import './demos/phase_two/todoApp.test.js';
 
       const results = runTests();
       const failedCount = results.filter((result) => !result.isPassed).length;

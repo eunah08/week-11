@@ -1,1 +1,71 @@
 /* Phase 2 데모 전용 스타일 (최상위 클래스: .phase-two) */
+.phase-two {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 2px solid #ccc;
+}
+
+.phase-two .error-text {
+  min-height: 1em;
+  color: #c62828;
+}
+
+.phase-two .todo-app {
+  max-width: 480px;
+}
+
+.phase-two .todo-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.phase-two .todo-form-label {
+  /* 화면에서는 숨기고 스크린 리더에는 읽히게 한다. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.phase-two .todo-input {
+  flex: 1;
+  padding: 6px 8px;
+}
+
+.phase-two .todo-filter {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.phase-two .todo-filter-button.is-active {
+  font-weight: bold;
+  background: #e3f2fd;
+}
+
+.phase-two .todo-list {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.phase-two .todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.phase-two .todo-item.is-done .todo-text {
+  color: #888;
+  text-decoration: line-through;
+}
+
+.phase-two .todo-empty,
+.phase-two .todo-summary {
+  color: #555;
+  font-size: 14px;
+}
