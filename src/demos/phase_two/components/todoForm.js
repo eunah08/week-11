@@ -1,5 +1,6 @@
-import { createElement } from '../../../core/index.js';
+import { createElement, memo } from '../../../core/index.js';
 
+// Memoization
 /**
  * 할 일 입력 폼. props만 받는 순수 함수 컴포넌트다.
  * 입력창의 값은 draftText가 정하므로, 글자를 쳐도 입력창 DOM은 교체되지 않는다.
@@ -7,7 +8,7 @@ import { createElement } from '../../../core/index.js';
  *   입력 중인 글자, 입력 이벤트와 제출 이벤트를 처리하는 함수
  * @returns {object} VNode
  */
-export function todoForm({ draftText, onDraftInput, onSubmit }) {
+export const todoForm = memo(({ draftText, onDraftInput, onSubmit }) => {
   return createElement(
     'form',
     { class: 'todo-form', onSubmit },
@@ -27,4 +28,4 @@ export function todoForm({ draftText, onDraftInput, onSubmit }) {
       '추가',
     ),
   );
-}
+});

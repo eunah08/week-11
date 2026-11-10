@@ -1,5 +1,6 @@
-import { createElement } from '../../../core/index.js';
+import { createElement, memo } from '../../../core/index.js';
 
+// Memoization : props가 같으면 다시 실행하지 않는다. 바뀐 할 일의 줄만 다시 만든다.
 /**
  * 할 일 한 줄. props만 받는 순수 함수 컴포넌트다.
  * @param {{
@@ -9,7 +10,7 @@ import { createElement } from '../../../core/index.js';
  * }} props 할 일과 완료 토글·삭제 함수
  * @returns {object} VNode
  */
-export function todoItem({ todo, onToggle, onRemove }) {
+export const todoItem = memo(({ todo, onToggle, onRemove }) => {
   return createElement(
     'li',
     { class: todo.isDone ? 'todo-item is-done' : 'todo-item' },
@@ -35,4 +36,4 @@ export function todoItem({ todo, onToggle, onRemove }) {
       '삭제',
     ),
   );
-}
+});

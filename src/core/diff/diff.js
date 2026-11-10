@@ -30,6 +30,13 @@ export function diff(previousVNode, nextVNode) {
 
 // 입력 검증은 공개 함수 가드에서만 한다. (11장) 자식은 검증된 VNode라고 믿는다.
 function diffNode(previousVNode, nextVNode, path) {
+  // Selective Rendering
+  // 같은 VNode 객체면 바뀐 곳이 없으므로 안쪽을 비교하지 않는다. (memo가 재사용한 결과가 여기서 걸러진다)
+  // VNode는 만든 뒤 수정하지 않으므로(Phase 1 문서 6.2) 같은 객체는 항상 같은 내용이다.
+  if (previousVNode === nextVNode) {
+    return [];
+  }
+
   if (isReplaceNeeded(previousVNode, nextVNode)) {
     return [createReplacePatch(nextVNode, path)];
   }

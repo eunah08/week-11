@@ -17,7 +17,11 @@ export function startPhaseTwo() {
   const { container, errorMessage } = getPageElements();
   const props = { showError: (error) => showError(errorMessage, error) };
 
-  new FunctionComponent(todoApp, props, container).mount();
+  const instance = new FunctionComponent(todoApp, props, container);
+
+  // Batching : 예약된 갱신에서 난 에러는 이벤트 핸들러의 try/catch가 잡지 못하므로 여기로 받는다.
+  instance.onError = props.showError;
+  instance.mount();
 }
 
 function getPageElements() {

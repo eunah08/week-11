@@ -6,12 +6,20 @@ import {
 } from '../../../src/core/index.js';
 import { test, assertEqual, assertThrows } from '../../testRunner.js';
 
+// Batching : 상태를 바꾸면 갱신이 microtask로 예약되므로, 테스트에서는 예약된 갱신을 바로 실행한다.
+let lastInstance = null;
+
+function flush() {
+  lastInstance.flushUpdate();
+}
+
 function mountRoot(rootComponent) {
   const container = document.createElement('div');
   const instance = new FunctionComponent(rootComponent, {}, container);
 
   document.body.append(container);
   instance.mount();
+  lastInstance = instance;
   return { container, instance };
 }
 
@@ -70,7 +78,9 @@ test('useEffect : 의존성을 생략하면 렌더링마다 실행한다', () =>
 
   mountRoot(root);
   handles.setValue(1);
+  flush();
   handles.setValue(2);
+  flush();
   assertEqual(runCount, 3);
 });
 
@@ -84,7 +94,9 @@ test('useEffect : 빈 배열이면 최초 한 번만 실행한다', () => {
 
   mountRoot(root);
   handles.setValue(1);
+  flush();
   handles.setValue(2);
+  flush();
   assertEqual(runCount, 1);
 });
 
@@ -98,9 +110,12 @@ test('useEffect : 의존성 값이 바뀔 때만 실행한다', () => {
 
   mountRoot(root);
   handles.setValue(1);
+  flush();
   assertEqual(seenValues, [0]);
   handles.setValue(2);
+  flush();
   handles.setValue(3);
+  flush();
   assertEqual(seenValues, [0, 2]);
 });
 
@@ -114,6 +129,7 @@ test('useEffect : 의존성 길이가 달라져도 바뀐 것으로 본다', () 
 
   mountRoot(root);
   handles.setValue(1);
+  flush();
   assertEqual(runCount, 2);
 });
 
@@ -128,7 +144,9 @@ test('useEffect : 다시 실행하기 전에 이전 cleanup을 먼저 호출한�
 
   mountRoot(root);
   handles.setValue(1);
+  flush();
   handles.setValue(2);
+  flush();
   assertEqual(logs, ['run 0', 'cleanup 0', 'run 1', 'cleanup 1', 'run 2']);
 });
 
@@ -143,6 +161,7 @@ test('useEffect : 의존성이 같으면 cleanup도 호출하지 않는다', () 
 
   mountRoot(root);
   handles.setValue(1);
+  flush();
   assertEqual(logs, ['run']);
 });
 
@@ -191,13 +210,35 @@ test('useEffect : 여러 Effect는 등록한 순서대로 실행한다', () => {
   assertEqual(logs, ['A', 'B', 'C']);
 });
 
-test('useEffect : Effect 안에서 상태를 바꿔도 이어서 실행할 Effect를 낡은 값으로 다시 실행하지 않는다', () => {
+test('useEffect : Effect 안에서 update()가 다시 불려도 이어서 실행할 Effect를 낡은 값으로 다시 실행하지 않는다', () => {
   const logs = [];
-  const handles = { setFlag: null };
+  const handles = { instance: null };
+  let flag = false;
+  const root = () => {
+    useEffect(() => {
+      logs.push(`A ${flag}`);
+
+      if (!flag) {
+        flag = true;
+        handles.instance.update();
+      }
+    }, [flag]);
+    useEffect(() => {
+      logs.push(`B ${flag}`);
+    }, [flag]);
+    return createElement('p', null);
+  };
+
+  handles.instance = new FunctionComponent(root, {}, document.createElement('div'));
+  handles.instance.mount();
+  assertEqual(logs, ['A false', 'A true', 'B true']);
+});
+
+test('useEffect : Effect 안에서 상태를 바꾸면 갱신을 예약하고, 이어서 실행할 Effect는 그대로 실행한다', () => {
+  const logs = [];
   const root = () => {
     const [flag, setFlag] = useState(false);
 
-    handles.setFlag = setFlag;
     useEffect(() => {
       logs.push(`A ${flag}`);
 
@@ -212,7 +253,9 @@ test('useEffect : Effect 안에서 상태를 바꿔도 이어서 실행할 Effec
   };
 
   mountRoot(root);
-  assertEqual(logs, ['A false', 'A true', 'B true']);
+  assertEqual(logs, ['A false', 'B false']);
+  flush();
+  assertEqual(logs, ['A false', 'B false', 'A true', 'B true']);
 });
 
 test('useEffect : 콜백이 함수가 아니면 TypeError', () => {

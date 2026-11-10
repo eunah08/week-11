@@ -1,7 +1,8 @@
 import { NODE_TYPES, render, isVNode } from '../vdom/index.js';
 import { diff } from '../diff/index.js';
 import { applyPatches } from '../patch/index.js';
-import { HOOK_KINDS, setCurrentComponent } from './hookContext.js';
+import { HOOK_KINDS, setCurrentComponent, setRenderOwner } from './hookContext.js';
+import { MemoCache } from './MemoCache.js';
 
 const ROOT_NOT_FUNCTION_MESSAGE = '[FunctionComponent] 루트 컴포넌트는 함수여야 합니다';
 const CONTAINER_NOT_ELEMENT_MESSAGE = '[FunctionComponent] container는 DOM 요소여야 합니다';
@@ -40,6 +41,11 @@ export class FunctionComponent {
     this.isMounted = false;
     this.isRendering = false;
     this.renderCount = 0;
+    this.isUpdateScheduled = false;
+    // Memoization : memo 자식 컴포넌트의 이전 렌더링 결과
+    this.memoCache = new MemoCache();
+    // 예약된 갱신(Batching)에서 난 에러를 받을 함수. 없으면 에러를 그대로 던진다. (Phase 2 문서에 없는 추가 필드)
+    this.onError = null;
   }
 
   /**
@@ -53,8 +59,9 @@ export class FunctionComponent {
       throw new Error(ALREADY_MOUNTED_MESSAGE);
     }
 
-    // 이전 mount가 도중에 실패했을 수 있으므로 Hook 값을 비우고 새로 시작한다.
+    // 이전 mount가 도중에 실패했을 수 있으므로 Hook 값과 memo 결과를 비우고 새로 시작한다.
     this.hooks = [];
+    this.memoCache = new MemoCache();
 
     const vnode = this.createRootVNode();
     const rootNode = render(vnode);
@@ -86,6 +93,49 @@ export class FunctionComponent {
     this.runPendingEffects();
   }
 
+  // Batching
+  /**
+   * 갱신을 예약한다. 같은 틱에서 여러 번 불려도 microtask 한 번으로 모아 update()를 한 번만 실행한다.
+   * 상태 변경 함수가 호출될 때마다 즉시 update()하지 않고 이 함수를 쓴다. (Phase 2 문서 7.1 Batching)
+   * @returns {void}
+   */
+  requestUpdate() {
+    if (!this.isMounted || this.isUpdateScheduled) {
+      return;
+    }
+
+    this.isUpdateScheduled = true;
+    queueMicrotask(() => this.flushUpdate());
+  }
+
+  // Batching
+  /**
+   * 예약된 갱신이 있으면 기다리지 않고 지금 실행한다. 테스트에서 microtask를 기다리지 않으려고 쓴다.
+   * microtask에서 불린 경우 에러는 호출한 쪽이 없으므로 onError로 넘기고, 없으면 그대로 던진다.
+   * @returns {void}
+   */
+  flushUpdate() {
+    if (!this.isUpdateScheduled) {
+      return;
+    }
+
+    this.isUpdateScheduled = false;
+
+    if (!this.isMounted) {
+      return;
+    }
+
+    try {
+      this.update();
+    } catch (error) {
+      if (typeof this.onError !== 'function') {
+        throw error;
+      }
+
+      this.onError(error);
+    }
+  }
+
   /**
    * 남은 Effect의 cleanup을 호출하고 관리 대상 DOM을 해제한다. (6.4)
    * 해제 뒤에는 상태 변경 함수가 불려도 갱신하지 않는다. mount되지 않았으면 아무것도 하지 않는다.
@@ -111,7 +161,9 @@ export class FunctionComponent {
     this.pendingEffects = [];
     this.isRendering = true;
     this.renderCount += 1;
+    this.memoCache.startRender();
     setCurrentComponent(this);
+    setRenderOwner(this);
 
     let vnode = null;
 
@@ -119,12 +171,16 @@ export class FunctionComponent {
       vnode = this.RootComponent(this.props);
     } finally {
       setCurrentComponent(null);
+      setRenderOwner(null);
       this.isRendering = false;
     }
 
     if (!isVNode(vnode) || vnode.type !== NODE_TYPES.ELEMENT) {
       throw new TypeError(ROOT_NOT_ELEMENT_MESSAGE);
     }
+
+    // 렌더링이 성공했을 때만 이번 결과를 다음 렌더링의 비교 기준으로 삼는다.
+    this.memoCache.finishRender();
 
     return vnode;
   }
@@ -160,9 +216,11 @@ export class FunctionComponent {
   // hooks를 비우면 해제 전에 만든 상태 변경 함수는 더 이상 이 인스턴스를 갱신하지 못한다.
   resetAfterUnmount() {
     this.hooks = [];
+    this.memoCache = new MemoCache();
     this.pendingEffects = [];
     this.currentVNode = null;
     this.rootNode = null;
     this.isMounted = false;
+    this.isUpdateScheduled = false;
   }
 }

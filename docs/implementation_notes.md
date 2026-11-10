@@ -97,13 +97,28 @@
 ## 렌더링 시점과 Batching 지원 여부
 
 - Phase 1 : Patch 버튼을 누를 때만 diff와 반영이 일어난다. Batching은 없다.
-- Phase 2 : 상태 변경 함수가 불리는 즉시 `update()`가 동기로 실행된다. 렌더링 → `diff` →
-  `applyPatches` → Effect 순서다. **Batching은 없다.** (협약 19장 미정 사항, 11월 11일 결정 예정)
-    - 그래서 한 핸들러에서 상태를 두 번 바꾸면 렌더링이 두 번 일어난다. (예: 할 일 추가 = 목록, 입력창)
+- Phase 2 : **Batching을 지원한다.** (협약 19장 결정 필요 — 팀 확인 전 임시 채택)
+    - 상태 변경 함수는 값만 바꾸고 `requestUpdate()`로 마이크로태스크 1개를 예약한다.
+      같은 핸들러 안에서 상태를 여러 번 바꿔도 `update()`는 한 번만 실행된다. (코드 표시: `// Batching`)
+    - 그래서 setter 직후의 화면은 아직 그대로다. 코드에서 바로 확인해야 하면 `flushUpdate()`를 부른다.
+      (테스트는 `flushUpdate()`로 동기 반영, 실제 마이크로태스크 자동 반영은 브라우저에서 확인함)
+    - 마이크로태스크에서 난 에러는 `instance.onError`가 있으면 거기로 넘기고, 없으면 그대로 던진다.
+      데모는 `app.js`에서 `onError`로 에러 문구를 화면에 보여 준다.
     - 렌더링 중에 상태를 바꾸면 `Error`다. (무한 반복 방지, 협약 14장 엣지 케이스)
     - Effect 안에서 상태를 바꾸면 `update()`가 중첩해서 실행된다. 이때 아직 실행하지 않은
-      낡은 렌더링의 Effect는 건너뛴다. 새 렌더링이 의존성을 다시 비교해 필요한 Effect를 따로 등록하기 때문이다.
-      (`FunctionComponent`의 `renderCount`)
+      낡은 렌더링의 Effect는 건너뛴다. (`FunctionComponent`의 `renderCount`)
+
+## 차별화 요소 (Phase 2 추가)
+
+- Debouncing (`hooks/useDebouncedValue.js`) : `useState` + `useEffect`(cleanup에서 `clearTimeout`)로 만든
+  Hook. 값이 `delayMs` 동안 안 바뀌어야 따라온다. 데모 검색창은 300ms(`SEARCH_DELAY_MS`).
+- Batching : 위 "렌더링 시점" 참고. 관련 파일 `FunctionComponent.js`, `hooks/useState.js`.
+- Memoization : `memo(component)`(`component/memo.js`), `useCallback`(`hooks/useCallback.js`),
+  `useMemo`. `memo` 컴포넌트는 `MemoCache`(`component/MemoCache.js`)가 "컴포넌트 + 호출 순번" 기준으로
+  props를 얕게 비교해 같으면 이전 VNode를 그대로 돌려준다. 배열 props는 항목별로 비교한다.
+- Selective Rendering : `memo`가 같은 VNode 객체를 돌려주면 `diff`가 참조가 같다고 보고 하위 비교를
+  통째로 건너뛴다. (`diff.js` `diffNode` 맨 위, **Phase 1 파일을 수정한 유일한 곳**)
+- 각 코드 위에 `// Batching`, `// Memoization`, `// Selective Rendering`, `// Debouncing` 주석을 달았다.
 
 ## 알려진 제한
 
@@ -132,6 +147,10 @@
 - 자식 컴포넌트는 인덱스로만 비교되므로(`key` 미지원) 목록 중간을 지우면 뒤 항목들이 모두 변경으로
   처리된다. 화면은 맞게 나오지만 DOM 노드가 재사용되는 짝이 달라질 수 있다.
 - `update()` 도중 `applyPatches`가 실패하면 DOM과 `currentVNode`가 어긋날 수 있다. (Phase 1과 같은 제한)
+- Memoization 캐시는 `key`가 없어 인덱스(호출 순번) 기준이다. 목록 중간을 지우면 적중률만 떨어질 뿐
+  화면은 항상 맞다.
+- `diff`는 참조 shortcut 전에도 `isVNode`로 전체 트리를 검사하므로 비용은 줄지만 0은 아니다.
+- `memo`는 자식(`children`) 배열도 props로 비교한다. 자식이 매번 새로 만들어지면 적중하지 않는다.
 - `FunctionComponent`는 `unmount()` 후 다시 `mount()`할 수 있고, 이때 Hook 값은 새로 시작한다.
   mount하지 않은 상태의 `unmount()`는 아무 일도 하지 않는다. (협약에 없어 정한 해석, 팀 확인 필요)
 
@@ -182,5 +201,5 @@
 - `src/demos/phase_one/StateHistory.js`, `src/demos/phase_one/app.js`
 - Phase 2 : `src/core/component/FunctionComponent.js`, `src/core/component/createElement.js`,
   `src/core/hooks/getHookSlot.js`, `src/core/hooks/useState.js`, `src/core/hooks/useEffect.js`,
-  `src/core/hooks/useMemo.js`, `src/demos/phase_two/components/todoApp.js`
+  `src/core/hooks/useMemo.js`, `src/core/component/MemoCache.js`, `src/core/hooks/useDebouncedValue.js`, `src/demos/phase_two/components/todoApp.js`
 - 테스트 : 로컬 서버를 띄우고 `/tests/index.html`을 연다.

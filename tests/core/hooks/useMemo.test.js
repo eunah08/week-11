@@ -1,12 +1,20 @@
 import { createElement, useState, useMemo, FunctionComponent } from '../../../src/core/index.js';
 import { test, assertEqual, assertThrows, assertTrue } from '../../testRunner.js';
 
+// Batching : 상태를 바꾸면 갱신이 microtask로 예약되므로, 테스트에서는 예약된 갱신을 바로 실행한다.
+let lastInstance = null;
+
+function flush() {
+  lastInstance.flushUpdate();
+}
+
 function mountRoot(rootComponent) {
   const container = document.createElement('div');
   const instance = new FunctionComponent(rootComponent, {}, container);
 
   document.body.append(container);
   instance.mount();
+  lastInstance = instance;
   return { container, instance };
 }
 
@@ -47,7 +55,9 @@ test('useMemo : 의존성이 같으면 계산 함수를 다시 실행하지 않�
 
   mountRoot(root);
   handles.setOther(1);
+  flush();
   handles.setOther(2);
+  flush();
   assertEqual(calculateCount, 1);
   assertTrue(handles.results[0] === handles.results[2], '이전 결과를 재사용하지 않음');
 });
@@ -61,7 +71,9 @@ test('useMemo : 의존성이 달라지면 다시 계산한다', () => {
 
   mountRoot(root);
   handles.setCount(5);
+  flush();
   handles.setCount(6);
+  flush();
   assertEqual(calculateCount, 3);
   assertEqual(handles.results, [2, 10, 12]);
 });
@@ -75,7 +87,9 @@ test('useMemo : 의존성을 생략하면 렌더링마다 계산한다', () => {
 
   mountRoot(root);
   handles.setOther(1);
+  flush();
   handles.setOther(2);
+  flush();
   assertEqual(calculateCount, 3);
 });
 
@@ -88,7 +102,9 @@ test('useMemo : 빈 배열이면 최초 한 번만 계산한다', () => {
 
   mountRoot(root);
   handles.setCount(2);
+  flush();
   handles.setCount(3);
+  flush();
   assertEqual(calculateCount, 1);
 });
 

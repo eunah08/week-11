@@ -1,4 +1,4 @@
-import { createElement } from '../../../core/index.js';
+import { createElement, memo } from '../../../core/index.js';
 
 /**
  * 할 일 목록을 어떤 기준으로 보여 줄지 정하는 값.
@@ -42,17 +42,34 @@ export function filterTodos(todos, filter) {
 }
 
 /**
+ * 검색어가 들어 있는 할 일만 골라 새 배열로 돌려준다. 대소문자는 구분하지 않고, 검색어가 비었으면 그대로 돌려준다.
+ * @param {{ id: number, text: string, isDone: boolean }[]} todos 할 일 목록
+ * @param {string} keyword 검색어
+ * @returns {object[]} 검색어가 들어 있는 할 일
+ */
+export function searchTodos(todos, keyword) {
+  const normalizedKeyword = keyword.trim().toLowerCase();
+
+  if (normalizedKeyword === '') {
+    return todos;
+  }
+
+  return todos.filter((todo) => todo.text.toLowerCase().includes(normalizedKeyword));
+}
+
+// Memoization
+/**
  * 필터 버튼 모음. props만 받는 순수 함수 컴포넌트다.
  * @param {{ currentFilter: string, onChange: Function }} props 현재 필터와 필터 변경 함수
  * @returns {object} VNode
  */
-export function todoFilter({ currentFilter, onChange }) {
+export const todoFilter = memo(({ currentFilter, onChange }) => {
   const buttons = FILTER_BUTTONS.map(({ filter, label }) => {
     return createFilterButton({ filter, label, isActive: filter === currentFilter, onChange });
   });
 
   return createElement('div', { class: 'todo-filter', role: 'group' }, buttons);
-}
+});
 
 function createFilterButton({ filter, label, isActive, onChange }) {
   return createElement(

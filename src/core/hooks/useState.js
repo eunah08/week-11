@@ -6,7 +6,8 @@ const CHANGE_WHILE_RENDERING_MESSAGE = '[useState] 렌더링 중에는 상태를
 /**
  * 상태와 상태 변경 함수를 돌려준다. (Phase 2 문서 7.1)
  * 상태 변경 함수는 값 또는 (이전 값) => 다음 값 함수를 받는다.
- * 값이 Object.is 기준으로 같으면 다시 그리지 않고, 다르면 루트 컴포넌트를 update()한다.
+ * 값이 Object.is 기준으로 같으면 다시 그리지 않고, 다르면 갱신을 예약한다. (Batching)
+ * 같은 틱에서 여러 번 바꿔도 화면 갱신은 microtask에서 한 번만 일어난다.
  * 상태 변경 함수는 렌더링마다 같은 함수이며, 컴포넌트가 해제된 뒤에는 아무 일도 하지 않는다.
  * @param {any} initialValue 초기값 (함수면 최초 한 번만 호출해서 그 결과를 쓴다)
  * @returns {[any, Function]} [현재 값, 상태 변경 함수]
@@ -57,6 +58,7 @@ function changeState({ component, hookIndex, slot }, nextValueOrUpdater) {
     return;
   }
 
+  // Batching : 값은 바로 바꿔 두고(다음 함수형 갱신이 최신 값을 쓰도록), 화면 갱신만 모아서 한다.
   slot.value = nextValue;
-  component.update();
+  component.requestUpdate();
 }

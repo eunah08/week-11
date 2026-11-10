@@ -1,11 +1,25 @@
 import { FunctionComponent } from '../../../src/core/index.js';
 import { todoApp } from '../../../src/demos/phase_two/components/todoApp.js';
-import { filterTodos, FILTERS } from '../../../src/demos/phase_two/components/todoFilter.js';
+import {
+  filterTodos,
+  searchTodos,
+  FILTERS,
+} from '../../../src/demos/phase_two/components/todoFilter.js';
 import { startPhaseTwo } from '../../../src/demos/phase_two/app.js';
+import { installFakeTimers } from '../../fakeTimers.js';
 import { test, assertEqual, assertThrows, assertTrue } from '../../testRunner.js';
 
 // 데모가 탭 제목을 바꾸기 전의 제목. 테스트가 끝나면 이 값으로 돌아와야 한다.
 const BASE_TITLE = document.title;
+
+// Batching : 상태를 바꾸면 갱신이 microtask로 예약되므로, 조작 직후 예약된 갱신을 바로 실행한다.
+let activeInstance = null;
+
+function flush() {
+  if (activeInstance !== null) {
+    activeInstance.flushUpdate();
+  }
+}
 
 // 데모를 문서에 붙여 실행하고, 테스트가 끝나면 해제해서 탭 제목과 문서를 되돌린다.
 function withMountedApp(runTest) {
@@ -14,30 +28,36 @@ function withMountedApp(runTest) {
   const showError = (error) => errors.push(error === null ? null : error.message);
   const instance = new FunctionComponent(todoApp, { showError }, container);
 
+  instance.onError = (error) => errors.push(error.message);
   document.body.append(container);
   instance.mount();
+  activeInstance = instance;
 
   try {
     runTest({ container, errors, instance });
   } finally {
     instance.unmount();
     container.remove();
+    activeInstance = null;
   }
 }
 
 function type(input, value) {
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true }));
+  flush();
 }
 
 function submit(container) {
   const form = container.querySelector('form');
 
   form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  flush();
 }
 
 function click(domNode) {
   domNode.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  flush();
 }
 
 function getItemTexts(container) {
@@ -222,6 +242,151 @@ test('todo 데모 : unmount하면 탭 제목을 되돌리고 이후 상태 변�
 
     instance.mount();
   });
+});
+
+// Selective Rendering
+// 루트 div의 자식 순서는 [제목, 폼, 검색, 필터, 목록, 요약]이다.
+const LIST_CHILD_INDEX = 4;
+
+function getListVNode(instance) {
+  return instance.currentVNode.children[LIST_CHILD_INDEX];
+}
+
+// Selective Rendering
+test('todo 데모 : 입력만 바뀌면 목록 VNode를 다시 만들지 않고 그대로 재사용한다', () => {
+  withMountedApp(({ container, instance }) => {
+    const listVNodeBefore = getListVNode(instance);
+
+    type(container.querySelector('.todo-input'), '글');
+    assertTrue(getListVNode(instance) === listVNodeBefore, '목록 VNode를 다시 만듦');
+  });
+});
+
+// Selective Rendering
+test('todo 데모 : 한 줄만 토글하면 나머지 줄의 VNode와 DOM은 그대로다', () => {
+  withMountedApp(({ container, instance }) => {
+    const itemVNodesBefore = [...getListVNode(instance).children];
+    const itemNodes = Array.from(container.querySelectorAll('.todo-item'));
+    const observer = new MutationObserver(() => {});
+    const watchAllChanges = {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+    };
+
+    observer.observe(itemNodes[0], watchAllChanges);
+    observer.observe(itemNodes[2], watchAllChanges);
+    click(container.querySelectorAll('.todo-item input')[1]);
+
+    const itemVNodesAfter = getListVNode(instance).children;
+
+    assertTrue(itemVNodesAfter[0] === itemVNodesBefore[0], '첫째 줄 VNode를 다시 만듦');
+    assertTrue(itemVNodesAfter[2] === itemVNodesBefore[2], '셋째 줄 VNode를 다시 만듦');
+    assertTrue(itemVNodesAfter[1] !== itemVNodesBefore[1], '토글한 줄 VNode가 그대로임');
+    assertEqual(observer.takeRecords().length, 0, '바뀌지 않은 줄의 DOM이 바뀜');
+    observer.disconnect();
+  });
+});
+
+// Batching
+test('todo 데모 : 할 일을 추가하면 목록과 입력창이 바뀌어도 렌더링은 한 번이다', () => {
+  withMountedApp(({ container, instance }) => {
+    type(container.querySelector('.todo-input'), '우유 사기');
+
+    const renderCountBefore = instance.renderCount;
+
+    submit(container);
+    assertEqual(instance.renderCount - renderCountBefore, 1, '상태를 두 번 바꿨는데 여러 번 렌더링됨');
+    assertEqual(container.querySelector('.todo-input').value, '');
+    assertEqual(getItemTexts(container).length, 4);
+  });
+});
+
+// Debouncing
+test('todo 데모 : 검색창 글자는 바로 보이고 목록은 입력이 멈춘 뒤에 걸러진다', () => {
+  const timers = installFakeTimers();
+
+  try {
+    withMountedApp(({ container }) => {
+      const searchInput = container.querySelector('.todo-search-input');
+
+      searchInput.focus();
+      type(searchInput, 'use');
+      assertEqual(searchInput.value, 'use');
+      assertTrue(document.activeElement === searchInput, '검색창 포커스를 잃음');
+      assertEqual(getItemTexts(container).length, 3, '입력 직후에 목록이 걸러짐');
+      assertEqual(
+        container.querySelector('.todo-search-status').textContent,
+        '입력이 멈추면 검색해요',
+      );
+
+      timers.runPendingTimers();
+      flush();
+      assertEqual(getItemTexts(container), ['useState 구현하기']);
+      assertEqual(container.querySelector('.todo-search-status').textContent, '');
+      assertEqual(getSummary(container), '남은 할 일 2개 / 전체 3개');
+    });
+  } finally {
+    timers.uninstall();
+  }
+});
+
+// Debouncing
+test('todo 데모 : 연속으로 입력하면 타이머는 하나만 남고 마지막 검색어로 한 번 걸러진다', () => {
+  const timers = installFakeTimers();
+
+  try {
+    withMountedApp(({ container }) => {
+      const searchInput = container.querySelector('.todo-search-input');
+
+      for (const typedText of ['h', 'ho', 'hoo', 'hook']) {
+        type(searchInput, typedText);
+      }
+
+      assertEqual(timers.getPendingDelays(), [300]);
+      timers.runPendingTimers();
+      flush();
+      assertEqual(getItemTexts(container), ['Hook 규칙 읽어 보기']);
+    });
+  } finally {
+    timers.uninstall();
+  }
+});
+
+// Debouncing
+test('todo 데모 : 검색어를 지우면 다시 전체 목록이 보이고, 검색 중 할 일 입력은 바로 반영된다', () => {
+  const timers = installFakeTimers();
+
+  try {
+    withMountedApp(({ container }) => {
+      const searchInput = container.querySelector('.todo-search-input');
+
+      type(searchInput, 'dom');
+      timers.runPendingTimers();
+      flush();
+      assertEqual(getItemTexts(container), ['Virtual DOM 복습하기']);
+
+      type(container.querySelector('.todo-input'), '입력은 즉시');
+      assertEqual(container.querySelector('.todo-input').value, '입력은 즉시');
+
+      type(searchInput, '');
+      timers.runPendingTimers();
+      flush();
+      assertEqual(getItemTexts(container).length, 3);
+    });
+  } finally {
+    timers.uninstall();
+  }
+});
+
+// Debouncing
+test('searchTodos : 대소문자를 구분하지 않고, 검색어가 비면 같은 배열을 돌려준다', () => {
+  const todos = [{ id: 1, text: 'Hook 읽기', isDone: false }, { id: 2, text: '쉬기', isDone: false }];
+
+  assertEqual(searchTodos(todos, 'hOOk').map((todo) => todo.id), [1]);
+  assertTrue(searchTodos(todos, '   ') === todos, '비었는데 새 배열을 만듦');
+  assertEqual(searchTodos(todos, '없는말'), []);
 });
 
 test('filterTodos : 받은 배열을 바꾸지 않고 새 배열을 돌려주며, 알 수 없는 필터면 Error', () => {

@@ -1,5 +1,6 @@
 import { NODE_TYPES, isVNode } from '../vdom/index.js';
-import { getCurrentComponent, setCurrentComponent } from './hookContext.js';
+import { getCurrentComponent, setCurrentComponent, getRenderOwner } from './hookContext.js';
+import { isMemoComponent } from './memo.js';
 
 const INVALID_TAG_MESSAGE = '[createElement] tag가 올바르지 않습니다';
 const INVALID_PROPS_MESSAGE = '[createElement] props는 객체 또는 null이어야 합니다';
@@ -90,13 +91,26 @@ function findTextVNode(text) {
   return { type: NODE_TYPES.TEXT, text };
 }
 
-// 자식 컴포넌트를 부른다. 자식 안에서 Hook을 쓰면 현재 컴포넌트가 null이라 에러가 난다.
 function createComponentVNode(component, props, children) {
   // 자식 컴포넌트가 props를 바꾸지 못하게 얼려서 넘긴다. (Phase 2 문서 2장)
   const componentProps = Object.freeze({
     ...copyProps(props),
     children: normalizeChildren(children),
   });
+  const renderOwner = getRenderOwner();
+
+  // Memoization : memo 컴포넌트는 props가 이전과 같으면 실행하지 않고 이전 VNode를 재사용한다.
+  if (renderOwner !== null && isMemoComponent(component)) {
+    return renderOwner.memoCache.getOrCreateVNode(component, componentProps, () => {
+      return callComponent(component, componentProps);
+    });
+  }
+
+  return callComponent(component, componentProps);
+}
+
+// 자식 컴포넌트를 부른다. 자식 안에서 Hook을 쓰면 현재 컴포넌트가 null이라 에러가 난다.
+function callComponent(component, componentProps) {
   const parentComponent = getCurrentComponent();
   let vnode = null;
 

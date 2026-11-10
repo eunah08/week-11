@@ -1,10 +1,19 @@
-import { createElement, useState, useMemo, useEffect } from '../../../core/index.js';
-import { FILTERS, filterTodos, todoFilter } from './todoFilter.js';
+import {
+  createElement,
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useDebouncedValue,
+} from '../../../core/index.js';
+import { FILTERS, filterTodos, searchTodos, todoFilter } from './todoFilter.js';
 import { todoForm } from './todoForm.js';
+import { todoSearch } from './todoSearch.js';
 import { todoList } from './todoList.js';
 import { todoSummary } from './todoSummary.js';
 
 const EMPTY_INPUT_MESSAGE = '[todoApp] 할 일을 입력해 주세요';
+const SEARCH_DELAY_MS = 300;
 
 const INITIAL_TODOS = [
   { id: 1, text: 'Virtual DOM 복습하기', isDone: true },
@@ -22,32 +31,67 @@ export function todoApp(props) {
   const [todos, setTodos] = useState(INITIAL_TODOS);
   const [draftText, setDraftText] = useState('');
   const [filter, setFilter] = useState(FILTERS.ALL);
+  const [searchText, setSearchText] = useState('');
 
-  const visibleTodos = useMemo(() => filterTodos(todos, filter), [todos, filter]);
+  // Debouncing : 검색창 글자는 바로 보여 주고, 목록을 거르는 검색어는 입력이 멈춘 뒤에 따라오게 한다.
+  const debouncedSearchText = useDebouncedValue(searchText, SEARCH_DELAY_MS);
+
+  const visibleTodos = useVisibleTodos(todos, filter, debouncedSearchText);
   const remainingCount = useMemo(() => countRemainingTodos(todos), [todos]);
 
   useEffect(() => showRemainingInTitle(remainingCount), [remainingCount]);
 
-  const setters = { setTodos, setDraftText, setFilter };
-  const handlers = createHandlers({ draftText, ...setters }, props.showError);
+  const setters = { setTodos, setDraftText, setFilter, setSearchText };
+  const inputHandlers = useInputHandlers({ draftText, ...setters }, props.showError);
+  const listHandlers = useListHandlers(setters, props.showError);
+
+  return createTodoAppVNode({
+    draftText,
+    filter,
+    searchText,
+    isSearchPending: searchText !== debouncedSearchText,
+    visibleTodos,
+    remainingCount,
+    totalCount: todos.length,
+    handlers: { ...inputHandlers, ...listHandlers },
+  });
+}
+
+// 화면 구성. Hook을 쓰지 않고 값을 받아 VNode만 만든다.
+function createTodoAppVNode(view) {
+  const { handlers } = view;
 
   return createElement(
     'div',
     { class: 'todo-app' },
     createElement('h2', { class: 'todo-title' }, '할 일 목록'),
     createElement(todoForm, {
-      draftText,
+      draftText: view.draftText,
       onDraftInput: handlers.onDraftInput,
       onSubmit: handlers.onSubmit,
     }),
-    createElement(todoFilter, { currentFilter: filter, onChange: handlers.onFilterChange }),
+    createElement(todoSearch, {
+      searchText: view.searchText,
+      isPending: view.isSearchPending,
+      onSearchInput: handlers.onSearchInput,
+    }),
+    createElement(todoFilter, { currentFilter: view.filter, onChange: handlers.onFilterChange }),
     createElement(todoList, {
-      todos: visibleTodos,
+      todos: view.visibleTodos,
       onToggle: handlers.onToggle,
       onRemove: handlers.onRemove,
     }),
-    createElement(todoSummary, { remainingCount, totalCount: todos.length }),
+    createElement(todoSummary, {
+      remainingCount: view.remainingCount,
+      totalCount: view.totalCount,
+    }),
   );
+}
+
+// Memoization : 입력만 바뀔 때는 목록을 다시 거르지 않고 이전 결과를 쓴다.
+// 루트의 최상위에서 부르는 Hook 묶음이다.
+function useVisibleTodos(todos, filter, keyword) {
+  return useMemo(() => searchTodos(filterTodos(todos, filter), keyword), [todos, filter, keyword]);
 }
 
 function countRemainingTodos(todos) {
@@ -66,25 +110,53 @@ function showRemainingInTitle(remainingCount) {
 }
 
 // 이벤트 핸들러 모음. 상태를 바꾸는 함수는 모두 루트가 만들어 자식에게 내려준다. (Phase 2 문서 9장)
-function createHandlers(state, showError) {
-  const { draftText, setTodos, setDraftText, setFilter } = state;
-  const runSafely = createSafeRunner(showError);
+// 아래 useXxxHandlers는 루트의 최상위에서 부르는 Hook 묶음이다. (호출 순서는 항상 같다)
+// Memoization : 핸들러 참조를 고정해야 memo 자식이 props가 그대로라고 판단한다.
+// 상태 변경 함수는 렌더링이 바뀌어도 같은 함수이고, 목록 변경은 함수형 갱신을 쓰므로 의존성이 적다.
+function useInputHandlers(state, showError) {
+  const { draftText, setTodos, setDraftText, setSearchText } = state;
 
-  return {
-    onDraftInput: runSafely((event) => setDraftText(event.target.value)),
-    onSubmit: runSafely((event) => {
+  const onDraftInput = useCallback(
+    createSafeHandler(showError, (event) => setDraftText(event.target.value)),
+    [setDraftText, showError],
+  );
+  const onSubmit = useCallback(
+    createSafeHandler(showError, (event) => {
       event.preventDefault();
       addTodo({ draftText, setTodos, setDraftText });
     }),
-    onToggle: runSafely((todoId) => setTodos((todos) => toggleTodo(todos, todoId))),
-    onRemove: runSafely((todoId) => setTodos((todos) => removeTodo(todos, todoId))),
-    onFilterChange: runSafely((nextFilter) => setFilter(nextFilter)),
-  };
+    [draftText, setTodos, setDraftText, showError],
+  );
+  const onSearchInput = useCallback(
+    createSafeHandler(showError, (event) => setSearchText(event.target.value)),
+    [setSearchText, showError],
+  );
+
+  return { onDraftInput, onSubmit, onSearchInput };
+}
+
+function useListHandlers(state, showError) {
+  const { setTodos, setFilter } = state;
+
+  const onToggle = useCallback(
+    createSafeHandler(showError, (todoId) => setTodos((todos) => toggleTodo(todos, todoId))),
+    [setTodos, showError],
+  );
+  const onRemove = useCallback(
+    createSafeHandler(showError, (todoId) => setTodos((todos) => removeTodo(todos, todoId))),
+    [setTodos, showError],
+  );
+  const onFilterChange = useCallback(
+    createSafeHandler(showError, (nextFilter) => setFilter(nextFilter)),
+    [setFilter, showError],
+  );
+
+  return { onToggle, onRemove, onFilterChange };
 }
 
 // 핸들러를 감싸 에러를 화면에 보여 준다. 성공하면 이전 에러 표시를 지운다.
-function createSafeRunner(showError) {
-  return (handler) => (...args) => {
+function createSafeHandler(showError, handler) {
+  return (...args) => {
     try {
       handler(...args);
       showError(null);
