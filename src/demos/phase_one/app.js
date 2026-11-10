@@ -1,4 +1,6 @@
-import { domToVNode, render, diff, applyPatches, isIgnoredNode } from '../../core/index.js';
+import {
+  domToVNode, render, diff, applyPatches, isIgnoredNode, PATCH_TYPES,
+} from '../../core/index.js';
 import { StateHistory } from './StateHistory.js';
 import { SAMPLE_HTML } from './sample.js';
 
@@ -43,6 +45,7 @@ export function startPhaseOne() {
     });
   }
 
+  elements.testArea.addEventListener('change', syncTestCheckbox);
   updateHistoryControls(elements, state.history);
 }
 
@@ -75,21 +78,53 @@ function initializeAreas({ realArea, testArea }) {
   template.innerHTML = SAMPLE_HTML;
   realArea.append(template.content);
 
-  // 화면을 담는 컨테이너(#real-area)와 비교 대상 루트(그 안의 첫 노드)를 구분한다.
+  // 화면 컨테이너와 그 안의 비교 대상 카드를 구분한다.
   const realRoot = getComparisonRoot(realArea);
   const initialVNode = domToVNode(realRoot);
 
-  testArea.replaceChildren(render(initialVNode));
-
   return {
     realRoot,
+    testRoot: renderTestRoot(testArea, initialVNode),
     history: new StateHistory(initialVNode),
   };
 }
 
+// 카드 자체를 편집 영역으로 만들어 새 줄도 카드 안에 남긴다.
+function renderTestRoot(testArea, vnode) {
+  const editorVNode = { ...vnode, props: { ...vnode.props, contenteditable: 'true' } };
+  const rootNode = render(editorVNode);
+
+  testArea.replaceChildren(rootNode);
+  return rootNode;
+}
+
+// 테스트용 편집 속성은 실제 영역과 이력에 저장하지 않는다.
+function readTestVNode(testArea, expectedRoot) {
+  const rootNode = getComparisonRoot(testArea);
+  if (rootNode !== expectedRoot) {
+    throw new Error('비교할 카드가 바뀌었어요. 기존 카드 안에서 편집해 주세요');
+  }
+
+  const vnode = domToVNode(rootNode);
+  const props = { ...vnode.props };
+  delete props.contenteditable;
+  return { ...vnode, props };
+}
+
+// 브라우저가 바꾼 체크값을 속성에도 기록해야 Patch와 이력에 반영된다.
+function syncTestCheckbox({ target }) {
+  if (!(target instanceof Element) || !target.matches('input[type="checkbox"]')) {
+    return;
+  }
+
+  applyPatches(target, [
+    { type: PATCH_TYPES.UPDATE_PROPS, path: [], set: { checked: target.checked }, remove: [] },
+  ]);
+}
+
 // 9.4 Patch : 테스트 영역 다시 읽기 → 현재 이력과 diff → 실제 영역에 반영 → History 저장
 function patchRealArea(elements, state) {
-  const nextVNode = domToVNode(getComparisonRoot(elements.testArea));
+  const nextVNode = readTestVNode(elements.testArea, state.testRoot);
   const patches = diff(state.history.getCurrent(), nextVNode);
 
   // 바뀐 게 없으면 DOM도 History도 건드리지 않는다.
@@ -121,18 +156,18 @@ function moveHistory(elements, state, direction) {
   }
 
   // 테스트 영역에만 있던 미반영 수정은 선택한 이력으로 대체한다.
-  elements.testArea.replaceChildren(render(targetVNode));
+  state.testRoot = renderTestRoot(elements.testArea, targetVNode);
   updateHistoryControls(elements, history);
 }
 
 function getComparisonRoot(container) {
-  const rootNode = Array.from(container.childNodes).find((childNode) => !isIgnoredNode(childNode));
+  const roots = Array.from(container.childNodes).filter((childNode) => !isIgnoredNode(childNode));
 
-  if (!rootNode) {
-    throw new Error('[startPhaseOne] 비교할 루트 노드가 없습니다. 가장 바깥 상자를 지우지 마세요');
+  if (roots.length !== 1 || !(roots[0] instanceof Element)) {
+    throw new Error('비교할 카드가 하나 있어야 해요. 가장 바깥 카드를 유지해 주세요');
   }
 
-  return rootNode;
+  return roots[0];
 }
 
 function updateHistoryControls({ backButton, forwardButton, historyPosition }, history) {

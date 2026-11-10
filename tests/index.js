@@ -8,6 +8,7 @@ import './core/diff/diff.test.js';
 import './core/diff/diffSameReference.test.js';
 import './core/patch/applyPatches.test.js';
 import './demos/phase_one/StateHistory.test.js';
+import './demos/phase_one/app.test.js';
 import './core/component/createElement.test.js';
 import './core/component/FunctionComponent.test.js';
 import './core/component/batching.test.js';

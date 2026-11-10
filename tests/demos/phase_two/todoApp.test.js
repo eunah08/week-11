@@ -187,6 +187,10 @@ test('todo 데모 : 필터 버튼으로 보이는 항목이 바뀌고, 없으면
     assertEqual(getItemTexts(container), ['useState 구현하기', 'Hook 규칙 읽어 보기']);
 
     click(container.querySelectorAll('.todo-item input')[0]);
+    assertEqual(getItemTexts(container), ['Hook 규칙 읽어 보기']);
+    assertEqual(container.querySelector('.todo-item input').checked, false);
+    assertEqual(container.querySelector('.todo-item').classList.contains('is-done'), false);
+
     click(container.querySelectorAll('.todo-item input')[0]);
     assertEqual(container.querySelector('.todo-empty').textContent, '보여 줄 할 일이 없어요.');
 
@@ -418,4 +422,44 @@ test('startPhaseTwo : data-role 요소를 찾아 mount하고, 요소가 없으�
     page.remove();
     document.title = BASE_TITLE;
   }
+});
+
+test('todo 데모 : 완료 필터에서 첫 행을 해제해도 다음 행의 체크 상태가 유지된다', () => {
+  withMountedApp(({ container }) => {
+    click(container.querySelectorAll('.todo-item input')[1]);
+    click(container.querySelector('[data-filter="done"]'));
+    click(container.querySelector('.todo-item input'));
+
+    assertEqual(getItemTexts(container), ['useState 구현하기']);
+    assertEqual(container.querySelector('.todo-item input').checked, true);
+    assertEqual(container.querySelector('.todo-item').classList.contains('is-done'), true);
+  });
+});
+
+test('todo 데모 : 마지막 삭제 버튼이 사라지면 이전 버튼 또는 입력창에 포커스를 둔다', () => {
+  withMountedApp(({ container }) => {
+    const lastButtonSelector = '.todo-item:last-child [data-action="remove"]';
+    const lastButton = () => container.querySelector(lastButtonSelector);
+    for (let remaining = 2; remaining >= 0; remaining -= 1) {
+      const button = lastButton();
+      button.focus();
+      click(button);
+      assertEqual(getItemTexts(container).length, remaining);
+      const expected = lastButton() ?? container.querySelector('#todo-input');
+      assertTrue(document.activeElement === expected, '삭제 후 포커스가 목록 밖으로 벗어남');
+    }
+  });
+});
+
+test('todo 데모 : 삭제가 반영되기 전에 옮긴 포커스를 그대로 유지한다', () => {
+  withMountedApp(({ container }) => {
+    const button = container.querySelector('.todo-item:last-child [data-action="remove"]');
+    const search = container.querySelector('#todo-search-input');
+    button.focus();
+    button.click();
+    search.focus();
+    flush();
+
+    assertTrue(document.activeElement === search, '삭제가 검색창 포커스를 빼앗음');
+  });
 });

@@ -7,13 +7,18 @@
 }
 
 .phase-one #test-area {
-  min-height: 120px;
-  padding: 8px;
   border: 1px dashed #888;
 }
 
-.phase-one #real-area {
+.phase-one #test-area > [contenteditable] {
   min-height: 120px;
+  padding: 8px;
+}
+
+.phase-one #real-area {
+  min-inline-size: 0;
+  min-height: 120px;
+  margin: 0;
   padding: 8px;
   border: 1px solid #888;
 }

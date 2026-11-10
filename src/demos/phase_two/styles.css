@@ -31,6 +31,7 @@
 
 .phase-two .todo-input {
   flex: 1;
+  min-inline-size: 0;
   padding: 6px 8px;
 }
 
@@ -51,6 +52,7 @@
 
 .phase-two .todo-search-input {
   flex: 1;
+  min-inline-size: 0;
   padding: 6px 8px;
 }
 
@@ -81,8 +83,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid #eee;
+}
+
+.phase-two .todo-label {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.phase-two .todo-remove-button {
+  flex-shrink: 0;
 }
 
 .phase-two .todo-item.is-done .todo-text {
