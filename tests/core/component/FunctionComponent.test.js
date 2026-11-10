@@ -1,4 +1,4 @@
-import { createElement, FunctionComponent } from '../../../src/core/index.js';
+import { createElement, FunctionComponent, useState } from '../../../src/core/index.js';
 import { getCurrentComponent } from '../../../src/core/component/index.js';
 import { test, assertEqual, assertThrows, assertTrue } from '../../testRunner.js';
 
@@ -207,4 +207,25 @@ test('FunctionComponent : 렌더링 중에 모아 둔 Effect는 DOM 반영 뒤�
   assertEqual(logs, ['A:화면', 'B:화면']);
   instance.update();
   assertEqual(logs, ['A:화면', 'B:화면', 'A:화면', 'B:화면']);
+});
+
+test('FunctionComponent : 이전보다 Hook을 적게 부르면 Error (조건문 안의 Hook)', () => {
+  const handles = { setShowExtra: null };
+  const root = () => {
+    const [showExtra, setShowExtra] = useState(true);
+
+    handles.setShowExtra = setShowExtra;
+
+    if (showExtra) {
+      useState('추가');
+    }
+
+    return createElement('p', null);
+  };
+  const instance = new FunctionComponent(root, {}, document.createElement('div'));
+
+  instance.mount();
+  handles.setShowExtra(false);
+  // Batching : 갱신은 예약되므로 바로 실행해 에러를 확인한다.
+  assertThrows(() => instance.flushUpdate(), Error, 'Hook 호출 순서가 바뀌었습니다');
 });

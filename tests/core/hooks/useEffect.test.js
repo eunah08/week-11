@@ -270,3 +270,36 @@ test('useEffect : 렌더링 밖에서 호출하면 Error', () => {
     '[useEffect] 루트 컴포넌트 렌더링 중에만 호출할 수 있습니다',
   );
 });
+
+test('useEffect : cleanup 하나가 에러를 던져도 나머지 cleanup과 DOM 해제를 마친 뒤 그 에러를 던진다', () => {
+  const logs = [];
+  const root = () => {
+    useEffect(() => () => {
+      logs.push('cleanup A');
+      throw new Error('A 실패');
+    }, []);
+    useEffect(() => () => logs.push('cleanup B'), []);
+    return createElement('p', null);
+  };
+  const { container, instance } = mountRoot(root);
+
+  assertThrows(() => instance.unmount(), Error, 'A 실패');
+  assertEqual(logs, ['cleanup A', 'cleanup B']);
+  assertEqual(container.childNodes.length, 0, 'DOM이 남아 있음');
+  assertEqual(instance.isMounted, false);
+});
+
+test('useEffect : cleanup 안에서 상태를 바꿔도 다시 렌더링하지 않는다', () => {
+  let renderCount = 0;
+  const root = () => {
+    const [, setValue] = useState(0);
+
+    renderCount += 1;
+    useEffect(() => () => setValue(1), []);
+    return createElement('p', null);
+  };
+  const { instance } = mountRoot(root);
+
+  instance.unmount();
+  assertEqual(renderCount, 1);
+});

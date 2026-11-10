@@ -203,3 +203,17 @@
   `src/core/hooks/getHookSlot.js`, `src/core/hooks/useState.js`, `src/core/hooks/useEffect.js`,
   `src/core/hooks/useMemo.js`, `src/core/component/MemoCache.js`, `src/core/hooks/useDebouncedValue.js`, `src/demos/phase_two/components/todoApp.js`
 - 테스트 : 로컬 서버를 띄우고 `/tests/index.html`을 연다.
+
+## 병합 내역 (칼문·허준강 장점 반영)
+
+- 테스트를 Node에서도 실행 (허준강) : `tests/index.js`에 테스트 목록을 모으고, `tests/runNodeTests.js`가
+  jsdom으로 브라우저 값을 채운 뒤 실행한다. `npm install` 후 `npm test`로 돌린다.
+  브라우저 `tests/index.html`도 같은 목록(`tests/index.js`)을 쓴다.
+- Hook 개수 검사 (칼문) : 렌더링이 끝났을 때 `hookIndex !== hooks.length`이면 Error.
+  조건문 안의 Hook처럼 Hook을 덜 부르는 경우도 잡는다. (더 많이 부르는 경우는 `getHookSlot`이 잡는다)
+- cleanup 끝까지 실행 (칼문) : unmount 때 cleanup 하나가 에러를 던져도 나머지 cleanup과 DOM 해제를
+  마친 뒤 처음 난 에러를 던진다.
+- 상태 순수 함수 분리 (칼문) : `src/demos/phase_two/todoState.js`에 addTodo, toggleTodo, removeTodo,
+  countRemainingTodos를 두고 따로 테스트한다.
+- 갱신 큐와 diff 같은 객체 지름길은 이미 Batching(`requestUpdate`)과 `diff`의 같은 참조 검사로
+  들어가 있어 따로 넣지 않았다.
