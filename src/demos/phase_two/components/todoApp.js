@@ -11,6 +11,7 @@ import { todoForm } from './todoForm.js';
 import { todoSearch } from './todoSearch.js';
 import { todoList } from './todoList.js';
 import { todoSummary } from './todoSummary.js';
+import { addTodo, toggleTodo, removeTodo, countRemainingTodos } from '../todoState.js';
 
 const EMPTY_INPUT_MESSAGE = '[todoApp] 할 일을 입력해 주세요';
 const SEARCH_DELAY_MS = 300;
@@ -94,10 +95,6 @@ function useVisibleTodos(todos, filter, keyword) {
   return useMemo(() => searchTodos(filterTodos(todos, filter), keyword), [todos, filter, keyword]);
 }
 
-function countRemainingTodos(todos) {
-  return todos.filter((todo) => !todo.isDone).length;
-}
-
 // DOM 반영 뒤에 브라우저 탭 제목에 남은 개수를 붙인다. 다시 실행하거나 해제할 때 cleanup이 되돌린다.
 function showRemainingInTitle(remainingCount) {
   const previousTitle = document.title;
@@ -123,7 +120,7 @@ function useInputHandlers(state, showError) {
   const onSubmit = useCallback(
     createSafeHandler(showError, (event) => {
       event.preventDefault();
-      addTodo({ draftText, setTodos, setDraftText });
+      submitDraft({ draftText, setTodos, setDraftText });
     }),
     [draftText, setTodos, setDraftText, showError],
   );
@@ -166,27 +163,14 @@ function createSafeHandler(showError, handler) {
   };
 }
 
-function addTodo({ draftText, setTodos, setDraftText }) {
+// 입력한 글자를 검사하고 할 일로 추가한 뒤 입력창을 비운다.
+function submitDraft({ draftText, setTodos, setDraftText }) {
   const text = draftText.trim();
 
   if (text === '') {
     throw new Error(EMPTY_INPUT_MESSAGE);
   }
 
-  setTodos((todos) => [...todos, createTodo(todos, text)]);
+  setTodos((todos) => addTodo(todos, text));
   setDraftText('');
-}
-
-function createTodo(todos, text) {
-  const lastId = todos.reduce((maxId, todo) => Math.max(maxId, todo.id), 0);
-
-  return { id: lastId + 1, text, isDone: false };
-}
-
-function toggleTodo(todos, todoId) {
-  return todos.map((todo) => (todo.id === todoId ? { ...todo, isDone: !todo.isDone } : todo));
-}
-
-function removeTodo(todos, todoId) {
-  return todos.filter((todo) => todo.id !== todoId);
 }

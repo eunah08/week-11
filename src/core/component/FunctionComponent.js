@@ -9,6 +9,7 @@ const CONTAINER_NOT_ELEMENT_MESSAGE = '[FunctionComponent] container는 DOM 요�
 const ALREADY_MOUNTED_MESSAGE = '[FunctionComponent] 이미 mount되었습니다';
 const NOT_MOUNTED_MESSAGE = '[FunctionComponent] mount 전에 update할 수 없습니다';
 const ROOT_NOT_ELEMENT_MESSAGE = '[FunctionComponent] 루트는 element VNode여야 합니다';
+const HOOK_ORDER_CHANGED_MESSAGE = '[FunctionComponent] Hook 호출 순서가 바뀌었습니다';
 
 /**
  * 루트 함수형 컴포넌트의 실행·갱신·해제를 관리한다. (Phase 2 문서 6장)
@@ -139,19 +140,22 @@ export class FunctionComponent {
   /**
    * 남은 Effect의 cleanup을 호출하고 관리 대상 DOM을 해제한다. (6.4)
    * 해제 뒤에는 상태 변경 함수가 불려도 갱신하지 않는다. mount되지 않았으면 아무것도 하지 않는다.
+   * cleanup이 에러를 던져도 나머지 cleanup과 DOM 해제를 마친 뒤, 처음 난 에러를 던진다.
    * @returns {void}
+   * @throws {Error} cleanup이 에러를 던졌을 때 (처음 난 에러)
    */
   unmount() {
     if (!this.isMounted) {
       return;
     }
 
-    try {
-      this.runEffectCleanups();
-    } finally {
-      // cleanup이 에러를 던져도 DOM 해제와 상태 비우기는 끝까지 한다.
-      this.rootNode.remove();
-      this.resetAfterUnmount();
+    const firstCleanupError = this.runEffectCleanups();
+
+    this.rootNode.remove();
+    this.resetAfterUnmount();
+
+    if (firstCleanupError !== null) {
+      throw firstCleanupError;
     }
   }
 
@@ -174,6 +178,8 @@ export class FunctionComponent {
       setRenderOwner(null);
       this.isRendering = false;
     }
+
+    this.assertHookCountUnchanged();
 
     if (!isVNode(vnode) || vnode.type !== NODE_TYPES.ELEMENT) {
       throw new TypeError(ROOT_NOT_ELEMENT_MESSAGE);
@@ -204,13 +210,40 @@ export class FunctionComponent {
     }
   }
 
+  // 이전 렌더링보다 Hook을 적게 부르면(조건문 안의 Hook) 남은 칸이 엉뚱한 Hook과 짝지어진다.
+  // 더 많이 부른 경우는 getHookSlot이 칸 종류를 비교할 때 잡는다.
+  // 최초 렌더링(mount 전)에는 칸을 새로 만드는 중이라 검사하지 않는다.
+  assertHookCountUnchanged() {
+    if (this.isMounted && this.hookIndex !== this.hooks.length) {
+      throw new Error(HOOK_ORDER_CHANGED_MESSAGE);
+    }
+  }
+
+  // 모든 Effect의 cleanup을 Hook 순서대로 부르고, 처음 난 에러를 돌려준다. (없으면 null)
+  // 하나가 에러를 던져도 나머지 cleanup은 끝까지 부른다.
   runEffectCleanups() {
+    let firstCleanupError = null;
+
     for (const hook of this.hooks) {
-      if (hook.kind === HOOK_KINDS.EFFECT && typeof hook.cleanup === 'function') {
-        hook.cleanup();
-        hook.cleanup = undefined;
+      if (hook.kind !== HOOK_KINDS.EFFECT || typeof hook.cleanup !== 'function') {
+        continue;
+      }
+
+      // cleanup은 한 번만 부르도록 부르기 전에 비운다.
+      const cleanup = hook.cleanup;
+
+      hook.cleanup = undefined;
+
+      try {
+        cleanup();
+      } catch (error) {
+        if (firstCleanupError === null) {
+          firstCleanupError = error;
+        }
       }
     }
+
+    return firstCleanupError;
   }
 
   // hooks를 비우면 해제 전에 만든 상태 변경 함수는 더 이상 이 인스턴스를 갱신하지 못한다.
