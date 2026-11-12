@@ -63,6 +63,26 @@
 - **Phase 2** : 할 일 목록. 추가, 완료 토글, 삭제, 필터(전체/진행 중/완료), 검색, 남은 개수 표시,
   탭 제목에 남은 개수 표시(`useEffect`).
 
+아래 이미지는 미니멀 UI를 적용한 [HeoJunekang 브랜치의 e75defb 커밋](https://github.com/eunah08/week-11/commit/e75defb480a3d1260908c3be4e31ff79f53430a5)을 브라우저 배율 100%에서 촬영한 화면입니다.
+
+**Phase 1 — Patch 적용 전**
+
+오른쪽 편집 영역에 ‘새 항목: 변경된 부분만 반영하기’를 추가한 상태입니다. 왼쪽 적용 화면에는 아직 새 항목이 없습니다.
+
+![Phase 1 Patch 적용 전 — 오른쪽 편집 영역에 새 항목 추가](docs/images/phase1-before-patch.png)
+
+**Phase 1 — Patch 적용 후**
+
+Patch를 누르면 왼쪽에도 새 항목이 반영되고, 이력이 1 / 1에서 2 / 2로 이동합니다.
+
+![Phase 1 Patch 적용 후 — 양쪽 영역에 새 항목 반영](docs/images/phase1-after-patch.png)
+
+**Phase 2 — 할 일 목록**
+
+할 일 추가, 검색, 필터, 완료 상태와 남은 개수를 확인할 수 있습니다.
+
+![Phase 2 할 일 목록 — 미니멀 UI의 추가·검색·필터와 목록](docs/images/phase2-todo-list.png)
+
 ---
 
 ## 2. 폴더 구조와 파일별 역할
