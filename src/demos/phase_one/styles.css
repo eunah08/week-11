@@ -1,39 +1,155 @@
 .phase-one .history-controls {
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block-end: 16px;
+  font-size: 13px;
+}
+
+.phase-one #history-position {
+  margin-inline-start: auto;
+  color: var(--dashboard-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.phase-one .comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
 }
 
 .phase-one .area-panel {
-  margin-bottom: 24px;
+  min-inline-size: 0;
+  padding: clamp(16px, 2vw, 22px);
+  border: 1px solid var(--dashboard-line);
+  border-block-start: 3px solid var(--dashboard-line);
+  border-radius: var(--dashboard-radius);
+  background: var(--dashboard-paper);
 }
 
+.phase-one .area-panel-editor {
+  border-block-start-color: var(--dashboard-accent);
+}
+
+.phase-one .area-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.phase-one .area-heading h2,
+.phase-one .sample-title {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.2px;
+}
+
+.phase-one .area-label,
+.phase-one .area-description,
+.phase-one .area-badge {
+  color: var(--dashboard-muted);
+  font-size: 12px;
+}
+
+.phase-one .area-label {
+  margin: 0 0 2px;
+}
+
+.phase-one .area-description {
+  margin: 8px 0 14px;
+}
+
+.phase-one .area-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--dashboard-bg);
+  white-space: nowrap;
+}
+
+.phase-one .area-panel-editor .area-badge {
+  background: var(--dashboard-soft);
+  color: var(--dashboard-accent-hover);
+}
+
+.phase-one #real-area,
 .phase-one #test-area {
-  border: 1px dashed #888;
-}
-
-.phase-one #test-area > [contenteditable] {
-  min-height: 120px;
-  padding: 8px;
+  min-inline-size: 0;
+  min-block-size: 242px;
+  margin: 0;
+  border: 1px solid var(--dashboard-line);
+  border-radius: var(--dashboard-radius);
+  overflow-wrap: anywhere;
 }
 
 .phase-one #real-area {
-  min-inline-size: 0;
-  min-height: 120px;
-  margin: 0;
-  padding: 8px;
-  border: 1px solid #888;
+  padding: 16px;
+  background: #fafafe;
 }
 
-.phase-one #error-message {
-  min-height: 1em;
-  color: #c62828;
+.phase-one #test-area {
+  border-style: dashed;
+  border-color: #b0a5d9;
 }
 
-.phase-one .edit-guide {
-  color: #555;
+.phase-one #test-area > [contenteditable] {
+  min-block-size: 240px;
+  padding: 16px;
+  border-radius: inherit;
+}
+
+.phase-one .sample-text,
+.phase-one .sample-list {
+  margin-block: 8px 12px;
   font-size: 14px;
 }
 
-.phase-one .history-controls button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.phase-one .sample-list {
+  padding-inline-start: 20px;
+}
+
+.phase-one .sample-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block-end: 10px;
+  font-size: 13px;
+}
+
+.phase-one .sample-button {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.phase-one .patch-bar {
+  display: flex;
+  justify-content: end;
+  margin-block: 18px 10px;
+}
+
+.phase-one #patch-button {
+  padding: 10px 15px;
+}
+
+.phase-one #patch-button span {
+  margin-inline-start: 10px;
+}
+
+.phase-one .edit-guide {
+  margin: 0;
+  color: var(--dashboard-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .phase-one .comparison {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .phase-one #patch-button {
+    inline-size: 100%;
+  }
 }
