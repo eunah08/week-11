@@ -123,10 +123,10 @@
 ## 알려진 제한
 
 - 자식은 인덱스로만 비교하므로 중간 자식을 지우면 뒤 자식들이 전부 변경으로 보인다. (`key` 미지원)
-- 테스트 영역(`contenteditable`)에서는 속성을 직접 편집할 수 없다. checkbox를 클릭해도
-  속성이 아니라 프로퍼티만 바뀌므로 Patch에 반영되지 않는다.
-- 테스트 영역의 가장 바깥 노드를 지우면 비교할 루트가 없어 에러를 보여준다.
-- 테스트 영역 최상위에 노드를 여러 개 만들면 첫 노드만 비교한다.
+- 테스트 영역은 카드 안에서 텍스트와 줄, 서식, 체크박스를 편집할 수 있다. 체크박스의 `change`에서
+  현재 체크값을 속성으로도 기록하므로 Patch와 이력에 반영된다. 실제 영역의 폼 컨트롤은 미리보기 전용이다.
+- 카드가 사라지거나 바뀌거나 다른 최상위 노드가 생기면 Patch를 중단하고 편집을 보존한다.
+  이력 이동은 미반영 편집을 선택한 이력으로 대체한다.
 - 이력 이동 중 실제 영역 반영이 실패하면 이력 위치는 되돌리지만, 실패 전에 적용된 Patch는 되돌리지 않는다.
   Patch 버튼도 같아서, 중간에 실패하면 실제 영역이 일부만 바뀐 채 이력에는 저장되지 않는다.
   이 상태에서 다음 diff는 실제 DOM과 다른 VNode를 기준으로 계산되므로, 에러가 나면 새로고침해야 한다.
@@ -144,8 +144,9 @@
 - `useEffect`·`useMemo`의 의존성이 배열이 아닌 값이면 검사하지 않는다. (협약에 에러 조건이 없다)
 - Effect의 cleanup은 Effect마다 "자기 cleanup → 자기 Effect" 순서다. 여러 Effect의 cleanup을
   모두 먼저 부르는 방식(React)과 순서가 다를 수 있다.
-- 자식 컴포넌트는 인덱스로만 비교되므로(`key` 미지원) 목록 중간을 지우면 뒤 항목들이 모두 변경으로
-  처리된다. 화면은 맞게 나오지만 DOM 노드가 재사용되는 짝이 달라질 수 있다.
+- 자식 컴포넌트는 인덱스로만 비교되므로(`key` 미지원) 목록 중간을 지우면 DOM 노드를 재사용하는
+  짝이 달라질 수 있다. 할 일 체크박스는 `change`에서 직전 렌더링의 체크값으로 되돌린 뒤 상태 갱신을
+  예약해, 브라우저가 바꾼 체크값이 다음 항목에 남는 일을 막는다.
 - `update()` 도중 `applyPatches`가 실패하면 DOM과 `currentVNode`가 어긋날 수 있다. (Phase 1과 같은 제한)
 - Memoization 캐시는 `key`가 없어 인덱스(호출 순번) 기준이다. 목록 중간을 지우면 적중률만 떨어질 뿐
   화면은 항상 맞다.
@@ -187,9 +188,9 @@
     - `useState` 상태 변경 함수를 렌더링 중에 부르면 `Error` — `[useState] 렌더링 중에는 상태를 바꿀 수 없습니다`
     - 보조 파일 : `component/index.js`, `patch/index.js` (다른 폴더는 `index.js`로 불러오는 규칙에 맞추기 위해),
       `hooks/getHookSlot.js`, `hooks/isDepsChanged.js`
-- 데모(`src/demos/phase_two`) : 할 일 목록. 루트 `todoApp`이 `useState` 3개(할 일, 입력 중인 글자, 필터),
-  `useMemo` 2개(보이는 할 일, 남은 개수), `useEffect` 1개(탭 제목에 남은 개수 붙이기, cleanup으로 되돌리기)를
-  쓰고, 자식 `todoForm`·`todoFilter`·`todoList`·`todoItem`·`todoSummary`는 props만 받는 순수 함수다.
+- 데모(`src/demos/phase_two`)는 루트 `todoApp`에서 할 일, 입력, 필터, 검색을 관리하고 자식에는 props를
+  전달한다. Effect는 탭 제목에 남은 개수를 표시하고, 삭제로 포커스를 잃으면 DOM 반영 뒤 이웃 삭제 버튼이나
+  할 일 입력창에 포커스를 둔다.
     - 함수 이름은 협약 3장(`camelCase`)대로 `todoApp`처럼 소문자로 시작한다.
     - 필터를 추가하려면 `todoFilter.js`의 `FILTERS`, `SHOW_RULE_BY_FILTER`, `FILTER_BUTTONS`에 한 줄씩 더한다.
     - 화면 요소는 `data-role`로 찾는다. 바꾸려면 `app.js`의 `PAGE_SELECTORS`를 고친다.

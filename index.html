@@ -9,35 +9,90 @@
     <link rel="stylesheet" href="src/demos/phase_two/styles.css">
   </head>
   <body>
-    <main class="phase-one">
-      <div class="history-controls">
-        <button type="button" id="back-button" data-action="back">← 뒤로가기</button>
-        <button type="button" id="forward-button" data-action="forward">앞으로가기 →</button>
-        <button type="button" id="patch-button" data-action="patch">Patch</button>
-        <span id="history-position"></span>
-      </div>
-      <p id="error-message" role="alert"></p>
+    <div class="dashboard">
+      <header class="brand-bar">
+        <p class="brand-name"><strong>mini</strong>react<span aria-hidden="true">·</span></p>
+        <p class="brand-caption">WEEK 11 / PLAYGROUND</p>
+      </header>
 
-      <section class="area-panel">
-        <h2>실제 영역</h2>
-        <div id="real-area"></div>
-      </section>
+      <nav class="phase-tabs" role="tablist" aria-label="Phase 선택">
+        <button type="button" id="phase-one-tab" role="tab" aria-controls="phase-one-panel"
+          aria-selected="true"><span>Phase 1</span>화면 비교</button>
+        <button type="button" id="phase-two-tab" role="tab" aria-controls="phase-two-panel"
+          aria-selected="false" tabindex="-1"><span>Phase 2</span>할 일 관리</button>
+      </nav>
 
-      <section class="area-panel">
-        <h2>테스트 영역</h2>
-        <p class="edit-guide">
-          글자를 고치거나, 줄을 추가·삭제하거나, 굵게(Ctrl+B) 등 서식을 바꾼 뒤 Patch를 누르세요.
-          속성(class 등)은 직접 편집할 수 없고, 가장 바깥 상자를 지우면 비교할 수 없어요.
-        </p>
-        <div id="test-area" contenteditable="true"></div>
-      </section>
-    </main>
+      <main class="dashboard-main">
+        <section class="phase-one" id="phase-one-panel" role="tabpanel"
+          aria-labelledby="phase-one-tab">
+          <header class="page-heading">
+            <div>
+              <p class="eyebrow">DOM PLAYGROUND</p>
+              <h1>편집하고, 변화를 확인하세요.</h1>
+            </div>
+            <p class="page-description">편집 중인 화면의 변경을 Patch로 적용해요.</p>
+          </header>
 
-    <main class="phase-two">
-      <h1>Phase 2 : 할 일 목록</h1>
-      <p class="error-text" data-role="todo-error" role="alert"></p>
-      <div data-role="todo-root"></div>
-    </main>
+          <div class="history-controls">
+            <button type="button" id="back-button" data-action="back">← 뒤로가기</button>
+            <button type="button" id="forward-button" data-action="forward">앞으로가기 →</button>
+            <span id="history-position"></span>
+          </div>
+
+          <div class="comparison">
+            <section class="area-panel">
+              <header class="area-heading">
+                <div>
+                  <p class="area-label">적용 결과</p>
+                  <h2 id="real-area-heading">적용된 화면</h2>
+                </div>
+                <span class="area-badge">현재 상태</span>
+              </header>
+              <p class="area-description">마지막으로 Patch를 적용한 결과예요.</p>
+              <fieldset id="real-area" aria-labelledby="real-area-heading" disabled></fieldset>
+            </section>
+
+            <section class="area-panel area-panel-editor">
+              <header class="area-heading">
+                <div>
+                  <p class="area-label">편집 공간</p>
+                  <h2>편집 중인 화면</h2>
+                </div>
+                <span class="area-badge">여기서 수정</span>
+              </header>
+              <p class="area-description">카드 안에서 글자, 서식, 체크박스를 바꿀 수 있어요.</p>
+              <div id="test-area"></div>
+            </section>
+          </div>
+
+          <div class="patch-bar">
+            <button type="button" id="patch-button" class="primary-button"
+              data-action="patch">변경 반영 · Patch <span aria-hidden="true">↗</span></button>
+          </div>
+          <p id="error-message" class="dashboard-error" role="alert"></p>
+          <p class="edit-guide">이력을 이동하면 Patch를 누르기 전의 편집은 사라져요.</p>
+        </section>
+
+        <section class="phase-two" id="phase-two-panel" role="tabpanel"
+          aria-labelledby="phase-two-tab" hidden>
+          <header class="page-heading">
+            <div>
+              <p class="eyebrow">TODO WORKSPACE</p>
+              <h1>할 일을 하나씩 끝내요.</h1>
+            </div>
+            <p class="page-description">할 일을 추가하고, 검색과 필터로 필요한 항목을 찾아요.</p>
+          </header>
+          <p class="error-text dashboard-error" data-role="todo-error" role="alert"></p>
+          <div data-role="todo-root"></div>
+        </section>
+      </main>
+
+      <footer class="dashboard-footer">
+        <span>Mini React</span>
+        <span>Virtual DOM · State · Hooks</span>
+      </footer>
+    </div>
     <script type="module" src="src/main.js"></script>
+    <script type="module" src="src/phaseTabs.js"></script>
   </body>
 </html>

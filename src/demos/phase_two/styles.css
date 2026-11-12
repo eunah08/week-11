@@ -1,78 +1,119 @@
-/* Phase 2 데모 전용 스타일 (최상위 클래스: .phase-two) */
 .phase-two {
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 2px solid #ccc;
+  max-inline-size: 540px;
+  margin-inline: auto;
 }
 
-.phase-two .error-text {
-  min-height: 1em;
-  color: #c62828;
+.phase-two .page-description {
+  display: none;
 }
 
+/* 배치는 바꾸고 기존 컴포넌트와 DOM 구조는 유지한다. */
 .phase-two .todo-app {
-  max-width: 480px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "add" "search" "filter" "title" "list" "summary";
+}
+
+.phase-two .todo-form,
+.phase-two .todo-search,
+.phase-two .todo-filter,
+.phase-two .todo-title,
+.phase-two .todo-list,
+.phase-two .todo-empty,
+.phase-two .todo-summary {
+  min-inline-size: 0;
+  margin: 0;
 }
 
 .phase-two .todo-form {
-  display: flex;
+  grid-area: add;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-block-end: 24px;
+}
+
+.phase-two .todo-form-label,
+.phase-two .todo-search-label {
+  color: var(--page-muted);
+  font-size: 14px;
 }
 
 .phase-two .todo-form-label {
-  /* 화면에서는 숨기고 스크린 리더에는 읽히게 한다. */
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
+  grid-column: 1 / -1;
 }
 
-.phase-two .todo-input {
-  flex: 1;
-  padding: 6px 8px;
+.phase-two .todo-input,
+.phase-two .todo-search-input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--page-line);
+  border-radius: var(--page-radius);
+  background: var(--page-paper);
+  font-size: 15px;
+}
+
+.phase-two .todo-input::placeholder,
+.phase-two .todo-search-input::placeholder {
+  color: var(--page-muted);
+}
+
+.phase-two .todo-add-button {
+  white-space: nowrap;
 }
 
 .phase-two .todo-search {
-  display: flex;
-  align-items: center;
+  grid-area: search;
+  display: grid;
   gap: 8px;
-  margin-bottom: 12px;
-}
-
-.phase-two .todo-search-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-}
-
-.phase-two .todo-search-input {
-  flex: 1;
-  padding: 6px 8px;
 }
 
 .phase-two .todo-search-status {
-  min-width: 9em;
-  color: #888;
+  color: var(--page-muted);
   font-size: 13px;
 }
 
+.phase-two .todo-search-status:empty {
+  display: none;
+}
+
 .phase-two .todo-filter {
+  grid-area: filter;
   display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-block: 12px 24px;
+}
+
+.phase-two .todo-filter-button {
+  padding: 7px 12px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--page-muted);
+  font-size: 14px;
 }
 
 .phase-two .todo-filter-button.is-active {
-  font-weight: bold;
-  background: #e3f2fd;
+  background: var(--page-soft);
+  color: var(--page-accent-hover);
+  font-weight: 650;
+}
+
+.phase-two .todo-title {
+  grid-area: title;
+  padding-block: 16px 4px;
+  border-block-start: 1px solid var(--page-line);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.phase-two .todo-list,
+.phase-two .todo-empty {
+  grid-area: list;
 }
 
 .phase-two .todo-list {
-  margin: 0 0 12px;
   padding: 0;
   list-style: none;
 }
@@ -81,17 +122,44 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px solid #eee;
+  gap: 8px;
+  padding-block: 13px;
+  border-block-end: 1px solid var(--page-line);
+}
+
+.phase-two .todo-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.phase-two .todo-remove-button {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--page-muted);
+  font-size: 13px;
 }
 
 .phase-two .todo-item.is-done .todo-text {
-  color: #888;
+  color: var(--page-muted);
   text-decoration: line-through;
 }
 
 .phase-two .todo-empty,
 .phase-two .todo-summary {
-  color: #555;
+  color: var(--page-muted);
   font-size: 14px;
+}
+
+.phase-two .todo-empty {
+  padding-block: 14px;
+}
+
+.phase-two .todo-summary {
+  grid-area: summary;
+  padding-block-start: 14px;
 }

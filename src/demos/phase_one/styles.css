@@ -1,34 +1,122 @@
 .phase-one .history-controls {
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block-end: 16px;
+  font-size: 13px;
+}
+
+.phase-one #history-position {
+  margin-inline-start: auto;
+  color: var(--page-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.phase-one .comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 36px;
 }
 
 .phase-one .area-panel {
-  margin-bottom: 24px;
+  min-inline-size: 0;
+  padding-block: 20px 0;
+  border-block-start: 1px solid var(--page-line);
 }
 
-.phase-one #test-area {
-  min-height: 120px;
-  padding: 8px;
-  border: 1px dashed #888;
+.phase-one .area-heading h2,
+.phase-one .sample-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
 }
 
-.phase-one #real-area {
-  min-height: 120px;
-  padding: 8px;
-  border: 1px solid #888;
+.phase-one .area-label,
+.phase-one .area-badge {
+  display: none;
 }
 
-.phase-one #error-message {
-  min-height: 1em;
-  color: #c62828;
-}
-
-.phase-one .edit-guide {
-  color: #555;
+.phase-one .area-description {
+  margin: 6px 0 16px;
+  color: var(--page-muted);
   font-size: 14px;
 }
 
-.phase-one .history-controls button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.phase-one #real-area,
+.phase-one #test-area {
+  min-inline-size: 0;
+  min-block-size: 220px;
+  margin: 0;
+  border: 0;
+  border-block-start: 1px solid var(--page-line);
+  overflow-wrap: anywhere;
+}
+
+.phase-one #real-area,
+.phase-one #test-area > [contenteditable] {
+  padding: 14px 0;
+}
+
+.phase-one #test-area > [contenteditable] {
+  min-block-size: 219px;
+}
+
+.phase-one #test-area:focus-within {
+  border-block-start-color: var(--page-accent);
+}
+
+.phase-one .sample-text,
+.phase-one .sample-list {
+  margin-block: 8px 12px;
+  font-size: 14px;
+}
+
+.phase-one .sample-list {
+  padding-inline-start: 20px;
+}
+
+.phase-one .sample-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block-end: 10px;
+  font-size: 13px;
+}
+
+.phase-one .sample-button {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.phase-one .patch-bar {
+  display: flex;
+  justify-content: end;
+  margin-block: 24px 12px;
+}
+
+.phase-one #patch-button {
+  padding: 10px 15px;
+}
+
+.phase-one #patch-button span {
+  margin-inline-start: 10px;
+}
+
+.phase-one .edit-guide {
+  margin: 0;
+  color: var(--page-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .phase-one .comparison {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .phase-one #patch-button {
+    inline-size: 100%;
+  }
 }

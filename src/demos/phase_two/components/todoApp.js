@@ -64,7 +64,7 @@ function createTodoAppVNode(view) {
 
   return createElement(
     'div',
-    { class: 'todo-app' },
+    { class: 'todo-app', 'data-role': 'todo-app' },
     createElement('h2', { class: 'todo-title' }, '할 일 목록'),
     createElement(todoForm, {
       draftText: view.draftText,
@@ -134,14 +134,21 @@ function useInputHandlers(state, showError) {
 
 function useListHandlers(state, showError) {
   const { setTodos, setFilter } = state;
+  const [removalFocus, setRemovalFocus] = useState(null);
+
+  useEffect(() => restoreRemovalFocus(removalFocus), [removalFocus]);
 
   const onToggle = useCallback(
     createSafeHandler(showError, (todoId) => setTodos((todos) => toggleTodo(todos, todoId))),
     [setTodos, showError],
   );
   const onRemove = useCallback(
-    createSafeHandler(showError, (todoId) => setTodos((todos) => removeTodo(todos, todoId))),
-    [setTodos, showError],
+    createSafeHandler(showError, (todoId, button) => {
+      const focus = captureRemovalFocus(button);
+      setTodos((todos) => removeTodo(todos, todoId));
+      setRemovalFocus(focus);
+    }),
+    [setTodos, setRemovalFocus, showError],
   );
   const onFilterChange = useCallback(
     createSafeHandler(showError, (nextFilter) => setFilter(nextFilter)),
@@ -149,6 +156,34 @@ function useListHandlers(state, showError) {
   );
 
   return { onToggle, onRemove, onFilterChange };
+}
+
+// 삭제 전에 포커스가 있던 버튼의 목록 위치를 기억한다.
+function captureRemovalFocus(button) {
+  if (button.ownerDocument.activeElement !== button) {
+    return null;
+  }
+
+  const app = button.closest('[data-role="todo-app"]');
+  const buttons = Array.from(app.querySelectorAll('[data-action="remove"]'));
+  return { app, index: buttons.indexOf(button) };
+}
+
+// DOM 반영 후 포커스가 사라진 경우에만 이웃 버튼이나 입력창으로 옮긴다.
+function restoreRemovalFocus(focus) {
+  if (focus === null || !focus.app.isConnected) {
+    return;
+  }
+
+  const { app, index } = focus;
+  const { activeElement, body } = app.ownerDocument;
+  if (activeElement !== body) {
+    return;
+  }
+
+  const buttons = app.querySelectorAll('[data-action="remove"]');
+  const target = buttons[index] ?? buttons[buttons.length - 1] ?? app.querySelector('#todo-input');
+  target.focus();
 }
 
 // 핸들러를 감싸 에러를 화면에 보여 준다. 성공하면 이전 에러 표시를 지운다.
