@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미니 리액트 극한 규모 테스트</title>
+    <style>
+      body { font-family: sans-serif; margin: 24px; }
+      table { border-collapse: collapse; font-size: 13px; }
+      th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; vertical-align: top; }
+      .ok { color: #2e7d32; }
+      .fail { color: #c62828; }
+      .skip { color: #888; }
+    </style>
+  </head>
+  <body>
+    <h1>미니 리액트 극한 규모 테스트</h1>
+    <p id="stress-summary">실행 중… (오래 걸릴 수 있습니다)</p>
+    <table>
+      <thead>
+        <tr><th>시나리오</th><th>규모</th><th>결과</th><th>patch 수</th><th>단계별 시간(ms)</th><th>전체(ms)</th></tr>
+      </thead>
+      <tbody id="stress-results"></tbody>
+    </table>
+    <script type="module">
+      import { runStressTests } from './stress.js';
+
+      const body = document.getElementById('stress-results');
+      const formatStages = (stages = {}) => Object.entries(stages)
+        .map(([name, stage]) => (stage.ok ? `${name} ${stage.ms.toFixed(1)}` : `${name} 실패(${stage.error})`))
+        .join(' / ');
+      const verdictOf = (row) => {
+        if (row.skipped) return ['skip', row.skipped];
+        if (row.crashed) return ['fail', `예외: ${row.crashed}`];
+        if (Object.values(row.stages).some((stage) => !stage.ok)) return ['fail', '단계 실패'];
+        if (row.isCorrect === false) return ['fail', '결과 불일치'];
+        return ['ok', '통과'];
+      };
+
+      const rows = await runStressTests((row) => {
+        const [className, verdict] = verdictOf(row);
+        const tr = document.createElement('tr');
+
+        for (const value of [row.scenario, row.scale.toLocaleString(), verdict,
+          row.patchCount?.toLocaleString() ?? '', formatStages(row.stages), row.totalMs?.toFixed(1) ?? '']) {
+          const td = document.createElement('td');
+
+          td.textContent = value;
+          tr.append(td);
+        }
+        tr.className = className;
+        body.append(tr);
+      });
+
+      document.getElementById('stress-summary').textContent = `완료 : ${rows.length}건`;
+      window.stressResults = rows.map(({ stages, ...rest }) => ({
+        ...rest,
+        stages: Object.fromEntries(Object.entries(stages || {})
+          .map(([name, { ok, ms, error }]) => [name, { ok, ms: Math.round(ms), error }])),
+      }));
+    </script>
+  </body>
+</html>

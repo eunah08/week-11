@@ -6,6 +6,7 @@
     <title>미니 리액트</title>
     <link rel="stylesheet" href="src/styles/base.css">
     <link rel="stylesheet" href="src/demos/phase_one/styles.css">
+    <link rel="stylesheet" href="src/demos/phase_two/styles.css">
   </head>
   <body>
     <main class="phase-one">
@@ -24,9 +25,18 @@
 
       <section class="area-panel">
         <h2>테스트 영역</h2>
-        <p class="edit-guide">지원하는 편집 범위 안내 (TODO)</p>
+        <p class="edit-guide">
+          글자를 고치거나, 줄을 추가·삭제하거나, 굵게(Ctrl+B) 등 서식을 바꾼 뒤 Patch를 누르세요.
+          속성(class 등)은 직접 편집할 수 없고, 가장 바깥 상자를 지우면 비교할 수 없어요.
+        </p>
         <div id="test-area" contenteditable="true"></div>
       </section>
+    </main>
+
+    <main class="phase-two">
+      <h1>Phase 2 : 할 일 목록</h1>
+      <p class="error-text" data-role="todo-error" role="alert"></p>
+      <div data-role="todo-root"></div>
     </main>
     <script type="module" src="src/main.js"></script>
   </body>

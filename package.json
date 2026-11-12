@@ -1,0 +1,11 @@
+{
+  "name": "mini-react",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/runNodeTests.js"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
