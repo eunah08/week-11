@@ -13,6 +13,15 @@ make run-demo   # 캐시 샘플 API 실행 (기본 포트 3000)
 make clean      # 빌드 결과 삭제
 ```
 
+외부 기능 테스트는 서버를 띄운 뒤 실행한다. 주소를 바꾸면 다른 서버에도 똑같이 돈다.
+
+```bash
+python3 tests/api/test_api.py 127.0.0.1:6380          # 기능 테스트 (협약 15.2)
+python3 tests/api/test_concurrency.py 127.0.0.1:6380  # 동시성 테스트 (협약 15.3)
+python3 tests/demo/test_demo.py                       # 캐시 예제 검증 (협약 15.4, 서버를 직접 띄움)
+python3 bench/run_bench.py 200 10                     # 성능 비교 (두 서버를 먼저 띄움)
+```
+
 ## 포트
 
 | 서버 | 기본 포트 |
@@ -26,8 +35,10 @@ make clean      # 빌드 결과 삭제
 |---|---|
 | `src/store/` | Phase 1 엔진 (해시 테이블, store, 단조 시계) |
 | `src/server/` | Phase 2 HTTP API 서버 |
+| `src/server/json.h / .c` | 요청 본문 JSON 해석, 응답 문자열 이스케이프 (새로 만든 파일) |
+| `src/client/mini_redis_client.h / .c` | 샘플 API가 쓰는 미니 레디스 HTTP 클라이언트 (협약 11.6) |
 | `src/demo/` | Phase 2 캐시 샘플 API |
-| `tests/` | 단위 테스트, `tests/api/`는 세 서버 공통 기능 테스트 |
+| `tests/` | 단위 테스트, `tests/api/`는 세 서버 공통 기능·동시성 테스트, `tests/demo/`는 캐시 예제 검증 |
 | `bench/` | 성능 비교 스크립트와 원본 결과 |
 | `docs/` | 협약, 구현 안내, 성능 비교 결과 |
 | `ai/` | AI 진입 파일 (CLAUDE.md, GEMINI.md, AGENTS.md) |
@@ -36,4 +47,4 @@ make clean      # 빌드 결과 삭제
 
 ## 사용한 외부 라이브러리
 
-- 아직 없음
+- 없음 (HTTP·JSON도 직접 구현. 테스트·성능 측정은 Python 3 표준 라이브러리만 사용)

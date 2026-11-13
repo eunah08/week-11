@@ -1,13 +1,15 @@
 CC      = cc
-CFLAGS  = -std=c11 -Wall -Wextra -D_POSIX_C_SOURCE=200809L -Isrc/store -Isrc/server -Isrc/demo
+CFLAGS  = -std=c11 -Wall -Wextra -D_POSIX_C_SOURCE=200809L -Isrc/store -Isrc/server -Isrc/demo -Isrc/client
 LDFLAGS = -lpthread
 
 BUILD_DIR = build
 
 STORE_SRCS  = src/store/store.c src/store/hash_table.c src/store/clock.c
 SERVER_SRCS = src/server/main.c src/server/http.c src/server/router.c \
-              src/server/handlers.c src/server/api_errors.c src/server/sweeper.c
-DEMO_SRCS   = src/demo/sample_api.c src/demo/slow_source.c
+              src/server/handlers.c src/server/api_errors.c src/server/sweeper.c \
+              src/server/json.c
+DEMO_SRCS   = src/demo/sample_api.c src/demo/slow_source.c src/client/mini_redis_client.c \
+              src/server/http.c src/server/json.c
 TEST_SRCS   = $(wildcard tests/store/test_*.c)
 
 SERVER_BIN = $(BUILD_DIR)/mini_redis
@@ -24,7 +26,7 @@ $(BUILD_DIR):
 $(SERVER_BIN): $(STORE_SRCS) $(SERVER_SRCS) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# demo는 store를 직접 링크하지 않는다 (협약 6장)
+# demo는 store를 직접 링크하지 않는다 (협약 6장). HTTP·JSON 도우미만 함께 쓴다
 $(DEMO_BIN): $(DEMO_SRCS) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 

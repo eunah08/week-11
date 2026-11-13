@@ -1,0 +1,69 @@
+{
+  "condition": {
+    "requestCount": 200,
+    "concurrency": 10,
+    "productKindCount": 100
+  },
+  "results": [
+    {
+      "scenario": 1,
+      "cache": "OFF",
+      "averageMs": 302.1346352400019,
+      "p95Ms": 305.49829199981104,
+      "requestsPerSecond": 33.06018804851435,
+      "hitRate": null,
+      "originCallCount": 200,
+      "errorCount": 0
+    },
+    {
+      "scenario": 1,
+      "cache": "ON",
+      "averageMs": 18.139464805021817,
+      "p95Ms": 9.424991000287264,
+      "requestsPerSecond": 545.8880867952415,
+      "hitRate": 0.95,
+      "originCallCount": 10,
+      "errorCount": 0
+    },
+    {
+      "scenario": 2,
+      "cache": "OFF",
+      "averageMs": 302.607369180007,
+      "p95Ms": 305.918783999914,
+      "requestsPerSecond": 33.01932923648607,
+      "hitRate": null,
+      "originCallCount": 200,
+      "errorCount": 0
+    },
+    {
+      "scenario": 2,
+      "cache": "ON",
+      "averageMs": 150.98537256497139,
+      "p95Ms": 305.25340199983475,
+      "requestsPerSecond": 65.3486300204087,
+      "hitRate": 0.505,
+      "originCallCount": 99,
+      "errorCount": 0
+    },
+    {
+      "scenario": 3,
+      "cache": "OFF",
+      "averageMs": 302.069436750005,
+      "p95Ms": 305.31216499957736,
+      "requestsPerSecond": 33.054632975040185,
+      "hitRate": null,
+      "originCallCount": 200,
+      "errorCount": 0
+    },
+    {
+      "scenario": 3,
+      "cache": "ON",
+      "averageMs": 302.95288423999864,
+      "p95Ms": 307.5121820002096,
+      "requestsPerSecond": 32.95882868879166,
+      "hitRate": 0.0,
+      "originCallCount": 200,
+      "errorCount": 0
+    }
+  ]
+}
