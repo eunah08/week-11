@@ -1,0 +1,177 @@
+{
+  "conditions": {
+    "requests": 200,
+    "concurrency": 10,
+    "key_space": 100,
+    "random_seed": 42,
+    "cache_ttl_ms": 60000,
+    "slow_source_delay_ms": 300,
+    "keep_alive": false,
+    "machine": {
+      "cpu": "Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz",
+      "logical_cores": 8,
+      "os": "Linux-6.18.58.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+      "python": "3.14.4"
+    }
+  },
+  "scenarios": [
+    {
+      "cache": "OFF",
+      "requests": 200,
+      "concurrency": 10,
+      "errors": 0,
+      "first_ms": 301.81,
+      "avg_ms": 303.54,
+      "p95_ms": 308.79,
+      "rps": 32.6,
+      "hit_rate": null,
+      "origin_calls": 200,
+      "scenario": "1. 같은 상품 1개 반복"
+    },
+    {
+      "cache": "ON",
+      "requests": 200,
+      "concurrency": 10,
+      "errors": 0,
+      "first_ms": 302.3,
+      "avg_ms": 11.11,
+      "p95_ms": 17.89,
+      "rps": 854.0,
+      "hit_rate": 0.995,
+      "origin_calls": 1,
+      "scenario": "1. 같은 상품 1개 반복"
+    },
+    {
+      "cache": "OFF",
+      "requests": 200,
+      "concurrency": 10,
+      "errors": 0,
+      "first_ms": 302.38,
+      "avg_ms": 304.11,
+      "p95_ms": 311.03,
+      "rps": 32.5,
+      "hit_rate": null,
+      "origin_calls": 200,
+      "scenario": "2. 상품 100개 무작위"
+    },
+    {
+      "cache": "ON",
+      "requests": 200,
+      "concurrency": 10,
+      "errors": 0,
+      "first_ms": 302.21,
+      "avg_ms": 152.98,
+      "p95_ms": 306.53,
+      "rps": 64.0,
+      "hit_rate": 0.5,
+      "origin_calls": 100,
+      "scenario": "2. 상품 100개 무작위"
+    },
+    {
+      "cache": "OFF",
+      "requests": 200,
+      "concurrency": 10,
+      "errors": 0,
+      "first_ms": 303.29,
+      "avg_ms": 303.51,
+      "p95_ms": 308.4,
+      "rps": 32.6,
+      "hit_rate": null,
+      "origin_calls": 200,
+      "scenario": "3. 모든 요청이 새 상품"
+    },
+    {
+      "cache": "ON",
+      "requests": 200,
+      "concurrency": 10,
+      "errors": 0,
+      "first_ms": 303.22,
+      "avg_ms": 303.91,
+      "p95_ms": 307.48,
+      "rps": 32.6,
+      "hit_rate": 0.0,
+      "origin_calls": 200,
+      "scenario": "3. 모든 요청이 새 상품"
+    }
+  ],
+  "concurrency_sweep": [
+    {
+      "cache": "OFF",
+      "requests": 100,
+      "concurrency": 1,
+      "errors": 0,
+      "first_ms": 301.39,
+      "avg_ms": 301.19,
+      "p95_ms": 301.8,
+      "rps": 3.3,
+      "hit_rate": null,
+      "origin_calls": 100,
+      "scenario": "2. 무작위 100건"
+    },
+    {
+      "cache": "ON",
+      "requests": 100,
+      "concurrency": 1,
+      "errors": 0,
+      "first_ms": 302.18,
+      "avg_ms": 183.49,
+      "p95_ms": 302.43,
+      "rps": 5.4,
+      "hit_rate": 0.39,
+      "origin_calls": 61,
+      "scenario": "2. 무작위 100건"
+    },
+    {
+      "cache": "OFF",
+      "requests": 100,
+      "concurrency": 10,
+      "errors": 0,
+      "first_ms": 301.21,
+      "avg_ms": 303.09,
+      "p95_ms": 307.16,
+      "rps": 32.5,
+      "hit_rate": null,
+      "origin_calls": 100,
+      "scenario": "2. 무작위 100건"
+    },
+    {
+      "cache": "ON",
+      "requests": 100,
+      "concurrency": 10,
+      "errors": 0,
+      "first_ms": 302.03,
+      "avg_ms": 205.88,
+      "p95_ms": 308.41,
+      "rps": 46.2,
+      "hit_rate": 0.32,
+      "origin_calls": 68,
+      "scenario": "2. 무작위 100건"
+    },
+    {
+      "cache": "OFF",
+      "requests": 100,
+      "concurrency": 50,
+      "errors": 0,
+      "first_ms": 301.07,
+      "avg_ms": 773.82,
+      "p95_ms": 1187.74,
+      "rps": 46.8,
+      "hit_rate": null,
+      "origin_calls": 100,
+      "scenario": "2. 무작위 100건"
+    },
+    {
+      "cache": "ON",
+      "requests": 100,
+      "concurrency": 50,
+      "errors": 0,
+      "first_ms": 302.32,
+      "avg_ms": 574.25,
+      "p95_ms": 900.66,
+      "rps": 64.6,
+      "hit_rate": 0.27,
+      "origin_calls": 73,
+      "scenario": "2. 무작위 100건"
+    }
+  ]
+}
