@@ -11,3 +11,6 @@ build/
 .vscode/
 .idea/
 .DS_Store
+
+# 테스트 실행 시 생기는 Python 캐시
+__pycache__/
