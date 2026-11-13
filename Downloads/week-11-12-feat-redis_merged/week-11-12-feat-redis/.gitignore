@@ -1,0 +1,16 @@
+# 빌드 결과
+build/
+*.o
+*.a
+*.dSYM/
+
+# 영속성 파일 (선택 기능)
+*.aof
+
+# 편집기, OS
+.vscode/
+.idea/
+.DS_Store
+
+# 테스트 실행 시 생기는 Python 캐시
+__pycache__/
